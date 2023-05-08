@@ -41,9 +41,9 @@ module OutsideIn.Inference(x : X) where
          → TS-f.map (PlusN-m.unit {m}) ∘ Γ ► e ∶ τ ↝ C
          → C prenex: f , C′
          → C′ separate: r , C′′
-         → let eq′ = PlusN-eq {m} eq in Ax-f.map (PlusN-m.unit {m}) Q , Qc , f solv► C′′ ↝ f′ , ε , θ
+         → let instance eq′ = PlusN-eq {m} eq in Ax-f.map (PlusN-m.unit {m}) Q , Qc , f solv► C′′ ↝ f′ , ε , θ
          → Q , ⟨ ∀′ m · Qc ⇒ τ ⟩, Γ ► prog
-         → Q , Γ ► bind₂ m · e  ∷ Qc ⇒ τ , prog 
+         → Q , Γ ► (bind₂ m · e  ∷ Qc ⇒ τ , prog)
     Bind :  ∀{r}{e : Expression ev x r}{prog : Program (Ⓢ ev) x}{C : Constraint (Ⓢ x) Extended}{f}{C′ : Constraint (x ⨁ suc f) Flat}
              {r′}{C′′ : SeparatedConstraint (x ⨁ suc f) r′}{n}{θ : x ⨁ suc f → Type (x ⨁ n)}{Qr}
          → TS-f.map (suc) ∘ Γ ► Exp-f.map suc e ∶ unit zero  ↝ C
@@ -51,11 +51,12 @@ module OutsideIn.Inference(x : X) where
          → C′ separate: r′ , C′′ 
          → Q , ε , suc f solv► C′′ ↝ n , Qr , θ
          → Q , ⟨ ∀′ n · Qr ⇒ (θ (PlusN-m.unit {f} zero)) ⟩, Γ ► prog
-         → Q , Γ ► bind₁ e , prog
+         → Q , Γ ► (bind₁ e , prog)
 
 
 
-  go :  {ev tv : Set}(Q : AxiomScheme tv)(Γ : Environment ev tv) → (eq : Eq tv) → (p : Program ev tv) → Ⓢ (Q , Γ ► p)
+  go :  {ev tv : Set}(Q : AxiomScheme tv)(Γ : Environment ev tv) → (eq : Eq tv) → (p : Program ev tv) →
+            let instance _ = eq in Ⓢ (Q , Γ ► p)
   go Q Γ eq (end) = suc Empty
   go {ev}{tv} Q Γ eq (bind₁ e , prog) 
                        with genConstraint {ev}{Ⓢ tv} (TS-f.map suc ∘ Γ) (Exp-f.map suc e) (unit zero) 
@@ -76,6 +77,6 @@ module OutsideIn.Inference(x : X) where
   ... | no _ = zero
   ... | yes prf₄′                with go Q (⟨ ∀′ m · Qc ⇒ τ ⟩, Γ) eq prog
   ... | zero = zero
-  ... | suc prf₅ = let 
+  ... | suc prf₅ = let instance
          eq′ =  PlusN-eq {m} eq 
         in suc (BindA prf₁ prf₂ prf₃ (subst (λ Qr → Ax-f.map (PlusN-m.unit {m}) Q , Qc , f solv► C′′ ↝ f′ , Qr , θ  ) prf₄′ prf₄) prf₅)

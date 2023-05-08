@@ -1,9 +1,10 @@
 module OutsideIn.Prelude where
 
   open import Data.Nat public
-  open import Relation.Binary.PropositionalEquality public renaming ([_] to iC)
+  open import Relation.Binary.PropositionalEquality public renaming ([_] to iC) hiding (Extensionality)
+  open import Axiom.Extensionality.Propositional
   open import Relation.Nullary public
-  open import Function public hiding (case_of_) 
+  open import Function public hiding (case_of_; _⟶_)
 
 
   cong₃ : ∀ {a b c d} {A : Set a} {B : Set b} {C : Set c} {D : Set d}
@@ -81,10 +82,9 @@ module OutsideIn.Prelude where
                                 ≡  f1map (F.map g) (f1map (F.map f) V))
                       → f1map (F.map ⦃ F2 ⦄ (g ∘ f)) V 
                       ≡ f1map (F.map ⦃ F2 ⦄ g) (f1map (F.map ⦃ F2 ⦄ f) V)
-    combine-composite′ ⦃ F2 ⦄ {V} f1map f1comp = trans (cong (λ t → f1map t V) 
-                                                      (extensionality (λ x → F.composite ⦃ F2 ⦄)))
-                                                 f1comp
 
+    combine-composite′ ⦃ F2 ⦄ {V} f1map f1comp =
+      trans (cong (λ t → f1map t V) (extensionality (λ x → F.composite))) f1comp
 
     combine-composite : {X Y : Set → Set}{A B C : Set} ⦃ F1 : Functor X ⦄ ⦃ F2 : Functor Y ⦄ 
                         {V : X (Y A)}{f : A → B}{g : B → C} 
@@ -109,17 +109,18 @@ module OutsideIn.Prelude where
     -- their own type equality relation. We don't care if it says Int ∼ Bool - this just
     -- provides a way for users to get some equality information threaded through the 
     -- simplifier
-    Eq : Set → Set
-    Eq X = ∀ (a b : X) → Bool
+    record Eq (X : Set): Set where
+      field eq : X → X → Bool
+      _∼_ = eq
 
   module Monads where
     open Functors
    
     record Monad (X : Set → Set) : Set₁ where
-      field ⦃ is-functor ⦄ : Functor X 
-      field ⦃ point ⦄ : Pointed X 
-      open Functor is-functor
+      field is-functor : Functor X 
+      field point : Pointed X 
       field join : ∀ {a} → X (X a) → X a
+      open Functor is-functor
       unit : ∀ {a} → a → X a
       unit = point
       _>>=_ : ∀ {a b} → X a → (a → X b) → X b
@@ -137,8 +138,8 @@ module OutsideIn.Prelude where
         <$>-unit : ∀ {A B}{g : A → B}{x} → g <$> (unit x) ≡  unit (g x)
         <$>-unit {A}{B}{g}{x} = begin 
           g <$> (unit x)                         ≡⟨ sym (is-left-ident {x = _<$>_ g}) ⟩
-          join (unit <$> (g <$> (unit x)))       ≡⟨ cong join (sym (composite)) ⟩ 
-          join ((λ x → unit (g x)) <$> (unit x)) ≡⟨ is-right-ident ⟩
+          join (unit <$> (g <$> (unit x)))       ≡⟨ cong join (sym composite) ⟩
+          join ((unit ∘ g) <$> (unit x))         ≡⟨ is-right-ident ⟩
           unit (g x)                             ∎
          where open ≡-Reasoning
 
@@ -191,7 +192,7 @@ module OutsideIn.Prelude where
       field produces-monad : ∀ {m} → Monad m → Monad (X m)
       field lift : ∀ {m}⦃ mm : Monad m ⦄{a} → m a → X m a
       field is-homomorphism : ∀ {m} → (mm : Monad m) 
-                            → MonadHomomorphism {m} {X m} (lift {m}) ⦃ mm ⦄ ⦃ produces-monad mm ⦄
+                            → MonadHomomorphism {m} {X m} (lift {m} ⦃ mm ⦄) ⦃ mm ⦄ ⦃ produces-monad mm ⦄
 
   module Ⓢ-Type where
     open Functors
@@ -210,7 +211,7 @@ module OutsideIn.Prelude where
     sequence-Ⓢ : ∀ {m}{b} → ⦃ monad : Monad m ⦄ →  Ⓢ (m b) → m (Ⓢ b)
     sequence-Ⓢ ⦃ m ⦄ (suc n) = map suc n
       where open Functor (Monad.is-functor m)
-    sequence-Ⓢ ⦃ m ⦄ (zero) = unit zero
+    sequence-Ⓢ ⦃ m ⦄ zero = unit zero
       where open Monad (m)
 
     private
@@ -236,10 +237,11 @@ module OutsideIn.Prelude where
 
 
     Ⓢ-eq : ∀ {x} → Eq x → Eq (Ⓢ x)
-    Ⓢ-eq x zero zero = true
-    Ⓢ-eq x (suc n) zero = false
-    Ⓢ-eq x zero (suc m) = false
-    Ⓢ-eq x (suc n) (suc m) = x n m
+    Eq.eq (Ⓢ-eq x) (suc x₁) (suc x₂) = Eq.eq x x₁ x₂
+    Eq.eq (Ⓢ-eq x) (suc x₁) zero = false
+    Eq.eq (Ⓢ-eq x) zero (suc x₁) = false
+    Eq.eq (Ⓢ-eq x) zero zero = true
+
 
     private
       join-Ⓢ : ∀ {x} → Ⓢ (Ⓢ x) → Ⓢ x

@@ -1,7 +1,7 @@
 open import OutsideIn.Prelude 
 open import OutsideIn.X
 module OutsideIn.Instantiations.Simple where
-  open import Data.Fin hiding (_+_)
+  open import Data.Fin hiding (_+_; join)
 
   data Type ( n :  Set) : Set where
     funTy : Type n
@@ -80,11 +80,12 @@ module OutsideIn.Instantiations.Simple where
 
 
 
-  types : Types
-  types = record { Type = Type
-                 ; type-is-monad = type-is-monad
-                 ; funType = _⟶_; appType = _·_
-                 }
+  instance
+    types : Types
+    types = record { Type = Type
+                   ; type-is-monad = type-is-monad
+                   ; funType = _⟶_; appType = _·_
+                   }
 
 
 
@@ -154,7 +155,7 @@ module OutsideIn.Instantiations.Simple where
 
   amgu : ∀{tc}{m} → (Eq tc) → (s t : Type (SVar tc m)) → ∃ (AList tc m) → Ⓢ (∃ (AList tc m))
   amgu eq (funTy) (funTy) acc = suc acc 
-  amgu eq (Var (base a)) (Var (base b)) acc with eq a b
+  amgu eq (Var (base a)) (Var (base b)) acc with Eq.eq eq a b
   ... | true = suc acc 
   ... | false = zero 
   amgu eq (Var (base a)) (funTy) acc = zero 
@@ -259,23 +260,25 @@ module OutsideIn.Instantiations.Simple where
   coerceId {_}{ax} = refl
 
 
-  axiom-schemes : AxiomSchemes
-  axiom-schemes = record { AxiomScheme = AxiomScheme
-                         ; axiomscheme-types = λ f → coerceAxioms
-                         ; axiomscheme-is-functor = record { map = λ f → coerceAxioms; identity = λ f → coerceId; composite = λ { {x = ax} → refl }}
-                         }
+  instance
+    axiom-schemes : AxiomSchemes
+    axiom-schemes = record { AxiomScheme = AxiomScheme
+                           ; axiomscheme-types = λ f → coerceAxioms
+                           ; axiomscheme-is-functor = record { map = λ f → coerceAxioms; identity = λ f → coerceId; composite = λ { {x = ax} → refl }}
+                           }
 
   is-ε : ∀ {m} (x : SConstraint m) → Dec (x ≡ ε)
   is-ε ε = yes refl
   is-ε (a ∧′ b) = no (λ ())  
   is-ε (a ∼ b) = no (λ ())  
 
-  qconstraints : QConstraints
-  qconstraints = record { QConstraint = SConstraint   
-                        ; qconstraint-is-functor = sconstraint-is-functor
-                        ; constraint-types = constraint-types                 
-                        ; _∼_ = _∼_; _∧_ = _∧′_; ε = ε; is-ε = is-ε
-                        }
+  instance
+    qconstraints : QConstraints
+    qconstraints = record { QConstraint = SConstraint
+                          ; qconstraint-is-functor = sconstraint-is-functor
+                          ; constraint-types = constraint-types
+                          ; _∼_ = _∼_; _∧_ = _∧′_; ε = ε; is-ε = is-ε
+                          }
 
 
   open Monad (type-is-monad) hiding (_>=>_)
@@ -316,17 +319,18 @@ module OutsideIn.Instantiations.Simple where
 
 
 
-  entailment : Entailment
-  entailment = record { _,_⊩_ = _,_⊩_
-                      ; ent-refl = ent-refl
-                      ; ent-trans = ent-trans
-                      ; ent-subst = ent-subst
-                      ; ent-typeq-refl = ent-typeq-refl
-                      ; ent-typeq-sym = ent-typeq-sym
-                      ; ent-typeq-trans = ent-typeq-trans
-                      ; ent-typeq-subst = ent-typeq-subst
-                      ; ent-conj = ent-conj 
-                      }
+  instance 
+    entailment : Entailment
+    entailment = record { _,_⊩_ = _,_⊩_
+                        ; ent-refl = ent-refl
+                        ; ent-trans = ent-trans
+                        ; ent-subst = ent-subst
+                        ; ent-typeq-refl = ent-typeq-refl
+                        ; ent-typeq-sym = ent-typeq-sym
+                        ; ent-typeq-trans = ent-typeq-trans
+                        ; ent-typeq-subst = ent-typeq-subst
+                        ; ent-conj = ent-conj
+                        }
 
 
   open SimplificationPrelude ⦃ types ⦄ ⦃ axiom-schemes ⦄ ⦃ qconstraints ⦄ ⦃ entailment ⦄

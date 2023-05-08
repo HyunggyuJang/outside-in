@@ -29,19 +29,19 @@ module OutsideIn.Inference.Solver(x : X) where
     data _,_,_solv►_↝_,_,_ {x : Set}⦃ eq : Eq x ⦄(Q : AxiomScheme x)(Qg : QConstraint x)(n : ℕ) : {s : Shape} → 
                         (SeparatedConstraint (x ⨁ n) s) → (m : ℕ) → (Qr : QConstraint (x ⨁ m)) → (θ : x ⨁ n → Type (x ⨁ m)) → Set where
       SOLVE : ∀ {s}{simpl}{imps : Implications _ s}{m}{Qr}{θ} 
-            → simplifier eq n Q Qg simpl ≡ m , Qr , solved Qr θ
-            → let peq = (PlusN-eq {m} eq) in (Ax-f.map (PlusN-m.unit {m}) Q) , (Qr ∧ QC-f.map (PlusN-m.unit {m}) Qg) solvI► substituteImp θ imps
+            → simplifier eq n Q Qg simpl ≡ (m , Qr , solved Qr θ)
+            → let instance _ = (PlusN-eq {m} eq) in (Ax-f.map (PlusN-m.unit {m}) Q) , (Qr ∧ QC-f.map (PlusN-m.unit {m}) Qg) solvI► substituteImp θ imps
             → Q , Qg , n solv► SC simpl imps ↝ m , Qr , θ 
 
   solveImps : {x : Set}{s : Shape} → (eq : Eq x) → (Q : AxiomScheme x) → (Qg : QConstraint x) → (C : Implications x s)
-            → Ⓢ (Q , Qg solvI► C)
+            → let instance _ = eq in Ⓢ (Q , Qg solvI► C)
   solver′ : {x : Set}{s : Shape} → (eq : Eq x)
           → (n : ℕ) → (Q : AxiomScheme x) → (Qg : QConstraint x) →  (C : SeparatedConstraint (x ⨁ n) s)
-          → Ⓢ (∃ (λ m → ∃ (λ θ →  Q , Qg , n solv► C ↝ m , ε , θ)))
+          → let instance _ = eq in Ⓢ (∃ (λ m → ∃ (λ θ →  Q , Qg , n solv► C ↝ m , ε , θ)))
   solver′  eq n axioms given (SC simpl imps) with simplifier eq n axioms given simpl | inspect (simplifier eq n axioms given) simpl 
   ... | m , ε? , solved .ε? θ | iC prf with is-ε ε? 
   solver′  eq n axioms given (SC simpl imps) 
-      | m , .ε , solved .ε θ | iC prf | yes refl = solveImps (PlusN-eq {m} eq)  
+      | m , ε? , solved .ε? θ | iC prf | yes refl = solveImps (PlusN-eq {m} eq)
                                                              (Ax-f.map (PlusN-m.unit {m}) axioms) 
                                                              ( ε ∧ QC-f.map (PlusN-m.unit {m}) given) 
                                                              (substituteImp θ imps) 
@@ -58,7 +58,7 @@ module OutsideIn.Inference.Solver(x : X) where
 
   solver : {x : Set}{s : Shape} → (eq : Eq x)
          → (n : ℕ) → (Q : AxiomScheme x) → (Qg : QConstraint x) →  (C : SeparatedConstraint (x ⨁ n) s)
-         → Ⓢ (∃ (λ m → ∃ (λ Qr → ∃ (λ θ →  Q , Qg , n solv► C ↝ m , Qr , θ))))
+         → let instance _ = eq in Ⓢ (∃ (λ m → ∃ (λ Qr → ∃ (λ θ →  Q , Qg , n solv► C ↝ m , Qr , θ))))
   solver eq n Q Qg (SC simpl imps) with simplifier eq n Q Qg simpl | inspect (simplifier eq n Q Qg) simpl
   ... | m , Qr , solved .Qr θ | iC prf = solveImps (PlusN-eq {m} eq) 
                                                    (Ax-f.map (PlusN-m.unit {m}) Q) 

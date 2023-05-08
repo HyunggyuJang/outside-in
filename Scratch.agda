@@ -1,10 +1,9 @@
 module Scratch where
-  open import OutsideIn.Prelude
   open import OutsideIn.X
   open import OutsideIn.Instantiations.Simple as Simple
   import OutsideIn
 
-  data DCs : ℕ → Set where
+  data DCs : OutsideIn.ℕ → Set where
     True : DCs 0
     False : DCs 0 
 
@@ -46,7 +45,7 @@ module Scratch where
   conn : SConstraint  (TCs ⨁ 2) 
   conn =  (Var (suc zero)) Simple.∼ ((funTy · Var zero) · Var zero)
 
-  v = Simple.simplifier (λ a b → true) 1 ax SConstraint.ε conn
+  v = Simple.simplifier (record { eq = λ a b → true }) 1 ax SConstraint.ε conn
 
 
   open import Data.List
@@ -93,6 +92,5 @@ module Scratch where
   Γ (N ()) 
   open import Data.Fin
 
-  test = go ax Γ (λ a b → true) p
-  test2 = go ax Γ (λ a b → true) p2 
-  
+  test = go ax Γ (record { eq = λ a b → true }) p
+  test2 = go ax Γ (record { eq = λ a b → true }) p2

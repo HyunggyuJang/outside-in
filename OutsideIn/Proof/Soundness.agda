@@ -123,14 +123,14 @@ module OutsideIn.Proof.Soundness(x : X) where
          in Q′ , Qv ∧ Qg′ ⊩ Q₁ 
           → Q′ , Q₁ , (TS-f.map (pn-m.unit {n}) ∘ Γ) ⊢ e′ ∶ τ
           → Q , Qg , (⟨ ∀′ n · Qv ⇒ τ  ⟩, Γ) ⊢′ p
-          → Q , Qg , Γ ⊢′ bind₁ e , p 
+          → Q , Qg , Γ ⊢′ (bind₁ e , p)
     BindA : {r : Shape}{n : ℕ}{e : Expression ev (tv ⨁ n) r}{p : Program (Ⓢ ev) tv}{Qv Q₁ : QConstraint (tv ⨁ n)}{τ : Type (tv ⨁ n)}
           → let Q′  = Ax-f.map (pn-m.unit {n}) Q 
                 Qg′ = QC-f.map (pn-m.unit {n}) Qg 
          in Q′ , Qv ∧ Qg′ ⊩ Q₁ 
           → Q′ , Q₁ , (TS-f.map (pn-m.unit {n}) ∘ Γ) ⊢ e ∶ τ 
           → Q , Qg , (⟨ ∀′ n · Qv ⇒ τ ⟩, Γ) ⊢′ p 
-          → Q , Qg , Γ ⊢′ bind₂ n · e ∷ Qv ⇒ τ , p     
+          → Q , Qg , Γ ⊢′ (bind₂ n · e ∷ Qv ⇒ τ , p)     
 
   open import Data.Empty
 

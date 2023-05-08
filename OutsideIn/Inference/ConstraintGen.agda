@@ -69,6 +69,7 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
 
   mutual
 
+    infix 5 alternativeConstraintGen
     syntax alternativeConstraintGen Γ α₀ α₁ alt C = Γ ►′ alt ∶ α₀ ⟶ α₁ ↝ C
     data alternativeConstraintGen {ev : Set}{tv : Set}(Γ : Environment ev tv)(α₀ α₁ : Type tv) : 
                                    {r : Shape} → Alternative ev tv r → Constraint tv Extended → Set where
@@ -94,6 +95,7 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
                     → Γ ►► as     ∶ α₀ ⟶ α₁ ↝ C₂ 
                     → Γ ►► a ∣ as ∶ α₀ ⟶ α₁ ↝ C₂  
 
+    infix 5 constraintGen
     syntax constraintGen a c b d = a ► b ∶ c ↝ d
     data constraintGen {ev : Set}{tv : Set}
                        (Γ : Environment ev tv)(τ : Type tv) : {r : Shape} → 

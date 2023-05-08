@@ -115,16 +115,16 @@ module OutsideIn.X where
                  → QConstraint x → QConstraint (x ⨁ n) → Ⓢ (SimplifierResultNoResidual x n)
      simplifier′ eq n ax g e with simplifier eq n ax g e 
      simplifier′ eq n ax g e | m , Qr , result with is-ε Qr
-     simplifier′ eq n ax g e | m , .ε , result | yes refl = suc (m , result)
+     simplifier′ eq n ax g e | m , Qr , result | yes refl = suc (m , result)
      simplifier′ eq n ax g e | m , Qr , result | no  p = zero
 
 
    record X : Set₂ where
      field dc : ℕ → Set 
-     field types : Types
-     field axiom-schemes : AxiomSchemes
-     field qconstraints : QConstraints
-     field entailment : Entailment
+     field ⦃ types ⦄ : Types
+     field ⦃ axiom-schemes ⦄ : AxiomSchemes
+     field ⦃ qconstraints ⦄ : QConstraints
+     field ⦃ entailment ⦄ : Entailment
      field simplification : Simplification
      open Types(types) public
      open AxiomSchemes(axiom-schemes) public
