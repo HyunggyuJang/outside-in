@@ -1,0 +1,11 @@
+#+title: Formalization of OutsideIn(X) in Agda
+
+* Overview
+The reference paper is [[https://www.microsoft.com/en-us/research/publication/outsideinx-modular-type-inference-with-local-assumptions/][OutsideIn(X)]]; and the original work by Dr. Liam O’Connor, at [[http://liamoc.net/images/reportB.pdf][undergraduate thesis]] with accompanying code, https://github.com/liamoc/outside-in.
+
+This is an attempt to finish his unfinished work, fully proving the proof of OutsideIn(X) in Agda.
+* To do
+- [X] Uplift Agda's version to the latest (2.6.3 at the time of writing)
+- [ ] Complete unfinished soundness proof at https://github.com/HyunggyuJang/outside-in/blob/master/OutsideIn/Proof/Soundness.agda
+- [ ] List up missed properties or theorems by comparing the papers
+- [ ] Fine tune
