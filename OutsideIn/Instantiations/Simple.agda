@@ -1,4 +1,4 @@
-open import OutsideIn.Prelude 
+open import OutsideIn.Prelude
 open import OutsideIn.X
 module OutsideIn.Instantiations.Simple where
   open import Data.Fin hiding (_+_; join)
@@ -339,9 +339,9 @@ module OutsideIn.Instantiations.Simple where
           n special-∧ ε = n 
           n special-∧ m = n ∧′ m
           convert :  SimplifierResult tc m →  SimplifierResult tc m
-          convert (n , Qr , solved .Qr θ) = convert′ ( constraint {r₂}{tc}{n} eq (applySubst θ b))
+          convert (n , ._ , solved Qr θ) = convert′ (constraint {r₂}{tc}{n} eq (applySubst θ b))
             where convert′ :  SimplifierResult tc n →  SimplifierResult tc m
-                  convert′ (n′ , Qr′ , solved .Qr′ θ′) = n′ , Qr′ special-∧ applySubst′ θ′ Qr , solved _ (θ′ >=> θ)
+                  convert′ (n′ , ._ , solved Qr′ θ′) = n′ , Qr′ special-∧ applySubst′ θ′ Qr , solved _ (θ′ >=> θ)
 
 
   
@@ -350,8 +350,16 @@ module OutsideIn.Instantiations.Simple where
   simplifier {x} eq n ax con₁ con₂ with shapify con₂
   ... | r , v = constraint {r}{x}{n} eq v
 
-  postulate simplifier-sound : {x : Set} {n : ℕ} {eq : Eq x} (Q : AxiomScheme x) (Qg : SConstraint x) (Qw : SConstraint (x ⨁ n)) 
-                             → IsSound Q Qg Qw (simplifier eq n Q Qg Qw)
+  simplifier-sound : {x : Set} {n : ℕ} {eq : Eq x}
+                     (Q : AxiomScheme x) (Qg : SConstraint x)
+                     (Qw : SConstraint (x ⨁ n))
+                     → IsSound Q Qg Qw (simplifier eq n Q Qg Qw)
+  simplifier-sound {x} {n} {eq} Q Qg Qw with simplifier eq n Q Qg Qw
+  simplifier-sound {x} {n} {eq} Q Qg (x₁ ∼ x₂) | n' , _ , solved Qr θ = {!!}
+  simplifier-sound {x} {n} {eq} Q Qg (Qw ∧′ Qw₁) | n' , _ , solved Qr θ = {!!}
+  simplifier-sound {x} {n} {eq} Q Qg ε | n' , (x₁ ∼ x₂) , solved .(x₁ ∼ x₂) θ = {!!}
+  simplifier-sound {x} {n} {eq} Q Qg ε | n' , (Qr ∧′ Qr₁) , solved .(Qr ∧′ Qr₁) θ = {!!}
+  simplifier-sound {x} {n} {eq} Q Qg ε | n' , ε , solved .ε θ = ent-refl
 
   simplification : Simplification
   simplification = record {simplifier = simplifier; simplifier-sound = λ {x}{n}{eq} → simplifier-sound {x}{n}{eq} }
