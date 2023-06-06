@@ -13,14 +13,14 @@ module OutsideIn.Instantiations.Simple where
     fmap-τ f (funTy) = funTy
     fmap-τ f (x · y) = fmap-τ f x · fmap-τ f y
     fmap-τ f (Var v) = Var (f v)
-    fmap-τ-id : ∀   {A : Set} {f : A → A} → isIdentity f → isIdentity (fmap-τ f)
+    fmap-τ-id : ∀ {A : Set} {f : A → A} → isIdentity f → isIdentity (fmap-τ f)
     fmap-τ-id {f = f} isid {funTy} = refl
-    fmap-τ-id {f = f} isid {α ·  β} = cong₂ _·_  (fmap-τ-id isid) (fmap-τ-id isid)
+    fmap-τ-id {f = f} isid {α · β} = cong₂ _·_  (fmap-τ-id isid) (fmap-τ-id isid)
     fmap-τ-id {f = f} isid {Var  v} = cong Var isid
     fmap-τ-comp : {A B C : Set} {f : A → B} {g : B → C} {x : Type A}       
                 → fmap-τ (g ∘ f) x ≡ fmap-τ g (fmap-τ f x)
     fmap-τ-comp {x = funTy} = refl
-    fmap-τ-comp {x = α ·  β} = cong₂ _·_ fmap-τ-comp fmap-τ-comp
+    fmap-τ-comp {x = α · β} = cong₂ _·_ fmap-τ-comp fmap-τ-comp
     fmap-τ-comp {x = Var v}  = cong Var refl 
 
   type-is-functor : Functor Type  
@@ -46,11 +46,11 @@ module OutsideIn.Instantiations.Simple where
                  → join-τ (fmap-τ a (join-τ (fmap-τ b τ))) 
                  ≡ join-τ (fmap-τ (λ v' → join-τ (fmap-τ a (b v'))) τ)
            assoc {a = a}{b}{funTy} = refl
-           assoc {a = a}{b}{α  · β} = cong₂ _·_  (assoc {τ = α}) (assoc {τ = β})
+           assoc {a = a}{b}{α · β} = cong₂ _·_  (assoc {τ = α}) (assoc {τ = β})
            assoc {a = a}{b}{Var  v} = refl 
            left-id : ∀ {a}{τ : Type a} → join-τ (Var <$> τ) ≡ τ
            left-id {_}{funTy} = refl
-           left-id {_}{α ·  β} = cong₂ _·_  (left-id {τ = α}) (left-id {τ = β})
+           left-id {_}{α · β} = cong₂ _·_  (left-id {τ = α}) (left-id {τ = β})
            left-id {_}{Var  v} = refl
 
   data SConstraint (x : Set) : Set where
@@ -78,8 +78,6 @@ module OutsideIn.Instantiations.Simple where
   _⟶_ : ∀ {n} → Type n → Type n → Type n
   a ⟶ b = (funTy · a) · b
 
-
-
   instance
     types : Types
     types = record { Type = Type
@@ -87,20 +85,11 @@ module OutsideIn.Instantiations.Simple where
                    ; funType = _⟶_; appType = _·_
                    }
 
-
-
-
-
   data SVar (tc : Set)(n : ℕ) : Set where
     base : tc → SVar tc n
     unification : Fin n → SVar tc n
 
-  thin : {n : ℕ} → Fin (suc n) → Fin n → Fin (suc n)
-  thin zero y          = suc y
-  thin (suc x) zero    = zero
-  thin (suc x) (suc y) = suc (thin x y)
- 
-  thick : ∀ {n} → (x y : Fin (suc n)) → Ⓢ (Fin n) 
+  thick : ∀ {n} → (x y : Fin (suc n)) → Ⓢ (Fin n)
   thick zero zero = zero
   thick zero (suc y) = suc y
   thick {zero } (suc ()) _ 
@@ -335,7 +324,7 @@ module OutsideIn.Instantiations.Simple where
 
   open SimplificationPrelude ⦃ types ⦄ ⦃ axiom-schemes ⦄ ⦃ qconstraints ⦄ ⦃ entailment ⦄
 
-  constraint : ∀{s}{tc}{m} → Eq tc → SConstraintShape (tc ⨁ m) s  → SimplifierResult tc m
+  constraint : ∀{s}{tc}{m} → Eq tc → SConstraintShape (tc ⨁ m) s → SimplifierResult tc m
   constraint {Unary _} _ ()
   constraint {Nullary}{m = m} _ ε = m , ε , solved ε Var
   constraint {Nullary}{tc}{m} eq (a ∼ b) = convert (mgu′ {tc}{m} eq a b)

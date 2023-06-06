@@ -40,10 +40,8 @@ module Scratch where
   con′ : SConstraint (TCs ⨁ 1) 
   con′ = SConstraint.ε ∧′ ((Var zero) SConstraint.∼ (Var (suc BoolT)) )
 
-
-
   conn : SConstraint  (TCs ⨁ 2) 
-  conn =  (Var (suc zero)) Simple.∼ ((funTy · Var zero) · Var zero)
+  conn =  (Var (suc zero)) Simple.∼ (Var zero ⟶ Var zero)
 
   v = Simple.simplifier (record { eq = λ a b → true }) 1 ax SConstraint.ε conn
 
@@ -90,7 +88,6 @@ module Scratch where
   Γ (DC True) = DC∀ 0 · [] ⟶ BoolT 
   Γ (DC False) = DC∀ 0 · [] ⟶ BoolT 
   Γ (N ()) 
-  open import Data.Fin
 
   test = go ax Γ (record { eq = λ a b → true }) p
   test2 = go ax Γ (record { eq = λ a b → true }) p2

@@ -46,7 +46,7 @@ module OutsideIn.Inference(x : X) where
          → Q , Γ ► (bind₂ m · e  ∷ Qc ⇒ τ , prog)
     Bind :  ∀{r}{e : Expression ev x r}{prog : Program (Ⓢ ev) x}{C : Constraint (Ⓢ x) Extended}{f}{C′ : Constraint (x ⨁ suc f) Flat}
              {r′}{C′′ : SeparatedConstraint (x ⨁ suc f) r′}{n}{θ : x ⨁ suc f → Type (x ⨁ n)}{Qr}
-         → TS-f.map (suc) ∘ Γ ► Exp-f.map suc e ∶ unit zero  ↝ C
+         → TS-f.map suc ∘ Γ ► Exp-f.map suc e ∶ unit zero ↝ C
          → C prenex: f , C′ 
          → C′ separate: r′ , C′′ 
          → Q , ε , suc f solv► C′′ ↝ n , Qr , θ

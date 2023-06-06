@@ -130,7 +130,7 @@ module OutsideIn.Proof.Soundness(x : X) where
          in Q′ , Qv ∧ Qg′ ⊩ Q₁ 
           → Q′ , Q₁ , (TS-f.map (pn-m.unit {n}) ∘ Γ) ⊢ e ∶ τ 
           → Q , Qg , (⟨ ∀′ n · Qv ⇒ τ ⟩, Γ) ⊢′ p 
-          → Q , Qg , Γ ⊢′ (bind₂ n · e ∷ Qv ⇒ τ , p)     
+          → Q , Qg , Γ ⊢′ (bind₂ n · e ∷ Qv ⇒ τ , p)
 
   open import Data.Empty
 

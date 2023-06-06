@@ -191,8 +191,8 @@ module OutsideIn.Prelude where
     record MonadTrans (X : (Set → Set) → Set → Set) : Set₁ where
       field produces-monad : ∀ {m} → Monad m → Monad (X m)
       field lift : ∀ {m}⦃ mm : Monad m ⦄{a} → m a → X m a
-      field is-homomorphism : ∀ {m} → (mm : Monad m) 
-                            → MonadHomomorphism {m} {X m} (lift {m} ⦃ mm ⦄) ⦃ mm ⦄ ⦃ produces-monad mm ⦄
+      field is-homomorphism : ∀ {m} → ⦃ mm : Monad m ⦄
+                            → MonadHomomorphism {m} {X m} (lift {m}) ⦃ mm ⦄ ⦃ produces-monad mm ⦄
 
   module Ⓢ-Type where
     open Functors
@@ -237,7 +237,8 @@ module OutsideIn.Prelude where
 
 
     Ⓢ-eq : ∀ {x} → Eq x → Eq (Ⓢ x)
-    Eq.eq (Ⓢ-eq x) (suc x₁) (suc x₂) = Eq.eq x x₁ x₂
+    Eq.eq (Ⓢ-eq x) (suc x₁) (suc x₂) = x₁ ∼ x₂
+      where open Eq x
     Eq.eq (Ⓢ-eq x) (suc x₁) zero = false
     Eq.eq (Ⓢ-eq x) zero (suc x₁) = false
     Eq.eq (Ⓢ-eq x) zero zero = true
@@ -417,7 +418,7 @@ module OutsideIn.Prelude where
     Ⓢ-Trans-is-trans : MonadTrans (Ⓢ-Trans)
     Ⓢ-Trans-is-trans = record { produces-monad = λ mm → MonadProofs.produces-monad ⦃ mm ⦄
                                ; lift = λ{m} → lift {m}
-                               ; is-homomorphism = λ mm → HomomorphismProofs.is-homomorphism ⦃ mm ⦄
+                               ; is-homomorphism = λ ⦃ mm ⦄ → HomomorphismProofs.is-homomorphism ⦃ mm ⦄
                                }
    
   module PlusN-Type where
@@ -445,7 +446,7 @@ module OutsideIn.Prelude where
     sequence-PlusN : ∀ {m}{n}{b} → ⦃ monad : Monad m ⦄ → (m b) ⨁ n → m (b ⨁ n)
     sequence-PlusN {n = zero} x = x
     sequence-PlusN {n = suc n} ⦃ m ⦄ x = sequence-PlusN {n = n}⦃ m ⦄ 
-                                                        (PlusN-f.map (sequence-Ⓢ ⦃ m ⦄) x)
+                                                        (PlusN-f.map sequence-Ⓢ x)
       where module PlusN-f = Functor (Monad.is-functor (PlusN-is-monad {n}))
 
     PlusN-collect : ∀ {n}{a b} → n ⨁ (a + b) ≡ (n ⨁ a) ⨁ b

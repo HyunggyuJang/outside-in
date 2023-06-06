@@ -14,14 +14,14 @@ module OutsideIn.Inference.Prenexer(x : X) where
 
   data _prenex:_,_ {n : Set} : Constraint n Extended → (m : ℕ) → Constraint (n ⨁ m) Flat → Set where
     PN-QC : ∀ {x} → QC x prenex: 0 , QC x
-    PN-∧  : ∀ {a b}{na nb}{a′}{b′} → a prenex: na , a′ → b prenex: nb , b′ 
-          → (a ∧′ b) prenex: (na + nb) , 
-                                               (Constraint-f.map ((subst id (sym (PlusN-collect {n}{na}{nb}))) ∘ PlusN-m.unit nb) a′
-                                             ∧′ Constraint-f.map ((subst id (sym (PlusN-collect {n}{na}{nb})))  ∘ PlusN-f.map nb (PlusN-m.unit na)) b′)
+    PN-∧  : ∀ {a b}{na nb}{a′}{b′} → a prenex: na , a′ → b prenex: nb , b′
+              → (a ∧′ b) prenex: (na + nb) ,
+                (Constraint-f.map ((subst id (sym (PlusN-collect {n}{na}{nb}))) ∘ PlusN-m.unit nb) a′
+                ∧′ Constraint-f.map ((subst id (sym (PlusN-collect {n}{na}{nb}))) ∘ PlusN-f.map nb (PlusN-m.unit na)) b′)
     PN-Imp : ∀ {q}{c}{m}{c′} 
-           → c prenex: m , c′ 
-           → Imp′ q c prenex: 0 , Imp (∃ m · q ⊃ c′)
-    PN-Ext  : ∀ {x}{n}{x′} → x prenex: n , x′ → (Ⅎ_ x) prenex: suc n , x′
+               → c prenex: m , c′
+               → Imp′ q c prenex: 0 , Imp (∃ m · q ⊃ c′)
+    PN-Ext  : ∀ {x}{n}{x′} → x prenex: n , x′ → (Ⅎ x) prenex: suc n , x′
 
 
   prenex : ∀ {n} → (C : Constraint n Extended) → ∃ (λ m → ∃ (λ C′ → C prenex: m , C′))
@@ -31,4 +31,4 @@ module OutsideIn.Inference.Prenexer(x : X) where
   prenex {n} (Imp′ q c) with prenex c
   ... | m , c′ , p = _ , _ , PN-Imp p 
   prenex (Ⅎ_ x) with prenex x
-  ... | n , x′ , p = _ , _ , PN-Ext  p 
+  ... | n , x′ , p = _ , _ , PN-Ext  p
