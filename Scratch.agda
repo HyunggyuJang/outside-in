@@ -43,7 +43,11 @@ module Scratch where
   conn : SConstraint  (TCs ⨁ 2) 
   conn =  (Var (suc zero)) Simple.∼ (Var zero ⟶ Var zero)
 
+  conn' : SConstraint  (TCs ⨁ 5)
+  conn' = SConstraint.ε
+
   v = Simple.simplifier (record { eq = λ a b → true }) 1 ax SConstraint.ε conn
+  w = Simple.simplifier (record { eq = λ a b → true }) 3 ax conn conn'
 
 
   open import Data.List
