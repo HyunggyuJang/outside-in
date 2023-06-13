@@ -292,8 +292,7 @@ module OutsideIn.Prelude where
                          ; composite = λ { {x = x} → trans (cong (λ t → t <$> x) 
                                                            (extensionality ext)) composite }
                          } 
-          where open ≡-Reasoning
-                ext : ∀ {A B C : Set} {f : A → B} {g : B → C} → (x' : Ⓢ A)
+          where ext : ∀ {A B C : Set} {f : A → B} {g : B → C} → (x' : Ⓢ A)
                     → fmap-Ⓢ (g ∘ f) x' ≡ (fmap-Ⓢ g ∘ fmap-Ⓢ f) x'
                 ext (zero) = refl
                 ext (suc n) = refl

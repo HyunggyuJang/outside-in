@@ -334,13 +334,15 @@ module OutsideIn.Instantiations.Simple where
   constraint {Binary r₁ r₂}{tc}{m} eq (a ∧′ b) =
     case (constraint {r₁}{tc}{m} eq a) of λ { (n , Qr , solved _ θ) →
       case (constraint {r₂}{tc}{n} eq (applySubst θ b)) of λ { (n′ , Qr′ , solved _ θ′) →
-        n′ , Qr′ special-∧ applySubst′ θ′ Qr , solved _ (θ′ >=> θ) } }
+        n′ , (case (Qr′ , applySubst′ θ′ Qr) of λ {
+          (ε , n) → n;
+          (n , ε) → n;
+          (n , n') → n ∧′ n'
+        }) , solved _ (θ′ >=> θ)
+      }
+    }
     where open import Function using (case_of_)
           open Monad (type-is-monad)
-          _special-∧_ : ∀ {n} → SConstraint n → SConstraint n → SConstraint n
-          ε special-∧ n = n
-          n special-∧ ε = n
-          n special-∧ m = n ∧′ m
 
 
   
@@ -354,24 +356,18 @@ module OutsideIn.Instantiations.Simple where
   applySubst-composition : ∀ {x} {n} {m} {m'}
                               {θ : x ⨁ n → Type (x ⨁ m)}
                               {θ' : x ⨁ m → Type (x ⨁ m')}
-                              {Qc : SConstraint (x ⨁ n)} →
-                            (applySubst θ' ∘ applySubst θ) (proj₂ (shapify Qc)) ≡
-                            applySubst (Monad._>=>_ type-is-monad θ' θ) (proj₂ (shapify Qc))
-  applySubst-composition {θ = θ} {θ' = θ'} {Qc = x ∼ x'}
+                              {s} {Qs : SConstraintShape (x ⨁ n) s} →
+                            (applySubst θ' ∘ applySubst θ) Qs ≡
+                            applySubst (Monad._>=>_ type-is-monad θ' θ) Qs
+  applySubst-composition {θ = θ} {θ' = θ'} {Qs = x ∼ x'}
     rewrite assoc {a = θ'} {b = θ} {τ = x}
     rewrite assoc {a = θ'} {b = θ} {τ = x'} = refl
-  applySubst-composition {x}{n}{m}{m'}{θ}{θ'}{Qc = Qc ∧′ Qc'}
-    with shapify Qc
-    with inspect shapify Qc
-    with shapify Qc'
-    with inspect shapify Qc'
-  ... | .(proj₁ (shapify Qc)) , .(proj₂ (shapify Qc)) | iC refl | r' , b | iC refl
-    rewrite applySubst-composition {x}{n}{m}{m'}{θ}{θ'}{Qc}
-    rewrite applySubst-composition {x}{n}{m}{m'}{θ}{θ'}{Qc'} = refl
-    where open Monad (type-is-monad)
-  applySubst-composition {Qc = ε} = refl
+  applySubst-composition {θ = θ} {θ' = θ'} {Qs = ε} = refl
+  applySubst-composition {x}{n}{m}{m'}{θ}{θ'}{Qs = Qs ∧′ Qs'}
+    rewrite applySubst-composition {x}{n}{m}{m'}{θ}{θ'}{_}{Qs}
+    rewrite applySubst-composition {x}{n}{m}{m'}{θ}{θ'}{_}{Qs'} = refl
 
-  applySubst-commute : ∀ {x} {n} {eq : Eq x} {m} {m'}
+  applySubst-commute' : ∀ {x} {n} {eq : Eq x} {m} {m'}
                           {θ' : x ⨁ m → Type (x ⨁ m')}
                           {θ : x ⨁ n → Type (x ⨁ m)}
                           {Qc : SConstraint (x ⨁ n)} →
@@ -381,16 +377,45 @@ module OutsideIn.Instantiations.Simple where
                         constraint eq (
                           applySubst θ' (proj₂ (shapify (applySubst′ θ Qc)))
                         )
-  applySubst-commute {Qc = x ∼ x₁} = refl
-  applySubst-commute {x}{n}{eq}{m}{m'}{θ'}{θ}{Qc = Qc ∧′ Qc'}
-    rewrite applySubst-commute {x}{n}{eq}{m}{m'}{θ'}{θ}{Qc}
+  applySubst-commute' {Qc = x ∼ x₁} = refl
+  applySubst-commute' {x}{n}{eq}{m}{m'}{θ'}{θ}{Qc = Qc ∧′ Qc'}
+    rewrite applySubst-commute' {x}{n}{eq}{m}{m'}{θ'}{θ}{Qc}
     with constraint {m = m'} eq (applySubst θ' (proj₂ (shapify (applySubst′ θ Qc))))
-  ... | (n' , Qr' , solved _ θ'') = {!!}
-  applySubst-commute {Qc = ε} = refl
+  ... | (n' , Qr' , solved _ θ'')
+    rewrite applySubst-composition {x}{m}{m'}{n'}{θ'}{θ''}{_}{proj₂(shapify (applySubst′ θ Qc'))}
+    rewrite applySubst-composition {x}{m}{m'}{n'}{θ'}{θ''}{_}{(applySubst θ (proj₂ (shapify Qc')))}
+    rewrite applySubst-commute' {x}{n}{eq}{m}{n'}{Monad._>=>_ type-is-monad θ'' θ'}{θ}{Qc'}
+    = refl
+  applySubst-commute' {Qc = ε} = refl
 
-  simplifier-sound : {x : Set} {n : ℕ} {eq : Eq x}
+  applySubst-unit : ∀ {x} {s} {Qs : SConstraintShape x s} → applySubst Var Qs ≡ Qs
+  applySubst-unit {Qs = x ∼ x'}
+    rewrite left-id {τ = x} rewrite left-id {τ = x'} = refl
+  applySubst-unit {Qs = ε} = refl
+  applySubst-unit {Qs = Qs ∧′ Qs'}
+    rewrite applySubst-unit {Qs = Qs} rewrite applySubst-unit {Qs = Qs'} = refl
+
+  applySubst-commute : ∀ {x} {n} {eq : Eq x} {m} {θ : x ⨁ n → Type (x ⨁ m)}
+                          {Qc : SConstraint (x ⨁ n)} →
+                        constraint {m = m} eq (applySubst θ (proj₂ (shapify Qc))) ≡
+                        constraint eq (proj₂ (shapify (applySubst′ θ Qc)))
+  applySubst-commute {x}{n}{eq}{m}{θ}{Qc} = begin
+    constraint eq (applySubst θ (proj₂ (shapify Qc))) ≡⟨ † ⟩
+    constraint eq (applySubst Var (applySubst θ (proj₂ (shapify Qc)))) ≡⟨ applySubst-commute' {x}{n}{eq}{m}{m}{Var}{θ}{Qc} ⟩
+    constraint eq (applySubst Var (proj₂ (shapify (applySubst′ θ Qc)))) ≡⟨ †' ⟩
+    constraint eq (proj₂ (shapify (applySubst′ θ Qc))) ∎
+    where open ≡-Reasoning
+          †' : constraint {m = m} eq (applySubst Var (proj₂ (shapify (applySubst′ θ Qc))))
+            ≡ constraint eq (proj₂ (shapify (applySubst′ θ Qc)))
+          †' rewrite applySubst-unit {Qs = proj₂ (shapify (applySubst′ θ Qc))} = refl
+          † : constraint {m = m} eq (applySubst θ (proj₂ (shapify Qc)))
+            ≡ constraint eq (applySubst Var (applySubst θ (proj₂ (shapify Qc))))
+          † rewrite applySubst-unit {Qs = applySubst θ (proj₂ (shapify Qc))} = refl
+
+  simplifier-sound : {x : Set} {n : ℕ} {eq : Eq x} {s : Shape}
                      (Q : AxiomScheme x) (Qg : SConstraint x)
                      (Qw : SConstraint (x ⨁ n))
+                     → s ≡ proj₁ (shapify Qw)
                      → IsSound Q Qg Qw (simplifier eq n Q Qg Qw)
   simplifier-sound {x} {n} {eq} Q Qg Qw
     with simplifier eq n Q Qg Qw
@@ -405,7 +430,7 @@ module OutsideIn.Instantiations.Simple where
     | zero
     rewrite left-id {τ = x₁}
     rewrite left-id {τ = x₂}
-    = ent-refl
+    = λ _ → ent-refl
   simplifier-sound {x} {n} {eq} Q Qg (x₁ ∼ x₂)
     | m , (Qr ∧′ Qr₁) , X.solved .(Qr ∧′ Qr₁) θ
     | iC ()
@@ -416,19 +441,34 @@ module OutsideIn.Instantiations.Simple where
     | zero
   simplifier-sound {x} {n} {eq} Q Qg (x₁ ∼ x₂)
     | m , ε , X.solved .ε θ
-    | iC prf
+    | iC refl
     | suc (m₁ , θ₁) = {!!}
-  simplifier-sound {x} {n} {eq} Q Qg (Qw ∧′ Qw₁)
+  simplifier-sound {x} {n} {eq} {s = Binary a b} Q Qg (Qw ∧′ Qw')
     | m , Qr , X.solved .Qr θ
-    | iC prf with simplifier eq n Q Qg Qw
-  ... | m' , Qr' , solved .Qr' θ' with simplifier eq m' Q Qg (applySubst′ θ' Qw₁)
-  ... |  m'' , Qr'' , solved .Qr'' θ'' = {!!}
+    | iC prf
+    with simplifier eq n Q Qg Qw
+    with inspect (simplifier eq n Q Qg) Qw
+    with simplifier-sound {x} {n} {eq} {a} Q Qg Qw
+  ... | m' , Qr' , solved .Qr' θ' | iC prf' | Qw-sound
+    with simplifier eq m' Q Qg (applySubst′ θ' Qw')
+    with inspect (simplifier eq m' Q Qg) (applySubst′ θ' Qw')
+    with simplifier-sound {x} {m'} {eq} {b} Q Qg (applySubst′ θ' Qw')
+  ... | m'' , Qr'' , solved .Qr'' θ'' | iC prf'' | Qw'-sound
+    rewrite applySubst-commute {x}{n}{eq}{m'}{θ'}{Qw'}
+    rewrite prf'
+    rewrite prf''
+    = λ x → {!!}
   simplifier-sound {x} {n} {eq} Q Qg ε
     | m , ε , X.solved .ε θ
-    | iC prf = ent-refl
+    | iC prf = λ _ → ent-refl
 
   simplification : Simplification
-  simplification = record {simplifier = simplifier; simplifier-sound = λ {x}{n}{eq} → simplifier-sound {x}{n}{eq} }
+  simplification = record {
+    simplifier = simplifier;
+    simplifier-sound = λ {x}{n}{eq} Q Qg Qw →
+      let s , _ = shapify Qw in
+      simplifier-sound {x}{n}{eq}{s} Q Qg Qw refl
+    }
 
   Simple : (ℕ → Set) → X
   Simple dc = record { dc = dc
