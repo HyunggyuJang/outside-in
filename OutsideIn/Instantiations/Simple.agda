@@ -13,6 +13,7 @@ module OutsideIn.Instantiations.Simple where
     fmap-τ f (funTy) = funTy
     fmap-τ f (x · y) = fmap-τ f x · fmap-τ f y
     fmap-τ f (Var v) = Var (f v)
+
     fmap-τ-id : ∀ {A : Set} {f : A → A} → isIdentity f → isIdentity (fmap-τ f)
     fmap-τ-id {f = f} isid {funTy} = refl
     fmap-τ-id {f = f} isid {α · β} = cong₂ _·_  (fmap-τ-id isid) (fmap-τ-id isid)
@@ -21,9 +22,23 @@ module OutsideIn.Instantiations.Simple where
                 → fmap-τ (g ∘ f) x ≡ fmap-τ g (fmap-τ f x)
     fmap-τ-comp {x = funTy} = refl
     fmap-τ-comp {x = α · β} = cong₂ _·_ fmap-τ-comp fmap-τ-comp
-    fmap-τ-comp {x = Var v}  = cong Var refl 
+    fmap-τ-comp {x = Var v}  = cong Var refl
+    join-τ :{a : Set} → Type (Type a)  → Type a
+    join-τ (funTy) = funTy
+    join-τ (x · y) = join-τ x · join-τ y
+    join-τ (Var v) = v
+    left-id : ∀ {a}{τ : Type a} → join-τ (fmap-τ Var τ) ≡ τ
+    left-id {_}{funTy} = refl
+    left-id {_}{α · β} = cong₂ _·_  (left-id {τ = α}) (left-id {τ = β})
+    left-id {_}{Var  v} = refl
+    assoc : ∀{A B C}{a : B → Type C}{b : A → Type B}{τ : Type A}
+          → join-τ (fmap-τ a (join-τ (fmap-τ b τ)))
+          ≡ join-τ (fmap-τ (λ v' → join-τ (fmap-τ a (b v'))) τ)
+    assoc {a = a}{b}{funTy} = refl
+    assoc {a = a}{b}{α · β} = cong₂ _·_  (assoc {τ = α}) (assoc {τ = β})
+    assoc {a = a}{b}{Var  v} = refl
 
-  type-is-functor : Functor Type  
+  type-is-functor : Functor Type
   type-is-functor = record { map = fmap-τ
                            ; identity = fmap-τ-id
                            ; composite = fmap-τ-comp
@@ -36,22 +51,6 @@ module OutsideIn.Instantiations.Simple where
                          ; is-right-ident = refl 
                          ; >=>-assoc = λ {_}{_}{_}{_}{_}{_}{c}{v} → assoc {τ = c v}
                          }
-     where join-τ :{a : Set} → Type (Type a)  → Type a
-           join-τ (funTy) = funTy
-           join-τ (x · y) = join-τ x · join-τ y
-           join-τ (Var v) = v
- 
-           open Functor (type-is-functor)
-           assoc : ∀{A B C}{a : B → Type C}{b : A → Type B}{τ : Type A} 
-                 → join-τ (fmap-τ a (join-τ (fmap-τ b τ))) 
-                 ≡ join-τ (fmap-τ (λ v' → join-τ (fmap-τ a (b v'))) τ)
-           assoc {a = a}{b}{funTy} = refl
-           assoc {a = a}{b}{α · β} = cong₂ _·_  (assoc {τ = α}) (assoc {τ = β})
-           assoc {a = a}{b}{Var  v} = refl 
-           left-id : ∀ {a}{τ : Type a} → join-τ (Var <$> τ) ≡ τ
-           left-id {_}{funTy} = refl
-           left-id {_}{α · β} = cong₂ _·_  (left-id {τ = α}) (left-id {τ = β})
-           left-id {_}{Var  v} = refl
 
   data SConstraint (x : Set) : Set where
      _∼_ : Type x → Type x → SConstraint x
@@ -332,33 +331,81 @@ module OutsideIn.Instantiations.Simple where
     convert : Ⓢ (∃ (λ n → tc ⨁ m → Type (tc ⨁ n))) →  SimplifierResult tc m
     convert (suc (n , θ)) = n , ε , solved ε θ
     convert zero = m , (a ∼ b) , solved _ Var
-  constraint {Binary r₁ r₂}{tc}{m} eq (a ∧′ b)  = convert (constraint {r₁}{tc}{m} eq a)
-    where open Monad (type-is-monad)
+  constraint {Binary r₁ r₂}{tc}{m} eq (a ∧′ b) =
+    case (constraint {r₁}{tc}{m} eq a) of λ { (n , Qr , solved _ θ) →
+      case (constraint {r₂}{tc}{n} eq (applySubst θ b)) of λ { (n′ , Qr′ , solved _ θ′) →
+        n′ , Qr′ special-∧ applySubst′ θ′ Qr , solved _ (θ′ >=> θ) } }
+    where open import Function using (case_of_)
+          open Monad (type-is-monad)
           _special-∧_ : ∀ {n} → SConstraint n → SConstraint n → SConstraint n
-          ε special-∧ n = n 
-          n special-∧ ε = n 
+          ε special-∧ n = n
+          n special-∧ ε = n
           n special-∧ m = n ∧′ m
-          convert :  SimplifierResult tc m →  SimplifierResult tc m
-          convert (n , Qr , solved Qr θ) = convert′ (constraint {r₂}{tc}{n} eq (applySubst θ b))
-            where convert′ :  SimplifierResult tc n →  SimplifierResult tc m
-                  convert′ (n′ , Qr′ , solved Qr′ θ′) = n′ , Qr′ special-∧ applySubst′ θ′ Qr , solved _ (θ′ >=> θ)
 
 
   
   simplifier : {x : Set} → Eq x → (n : ℕ) → AxiomScheme x → SConstraint x 
                          → SConstraint (x ⨁ n) → SimplifierResult x n
   simplifier {x} eq n _ _ con₂ =
-    let r , v = shapify con₂
-    in constraint {r}{x}{n} eq v
+    case shapify con₂ of λ { (r , v) → constraint {r}{x}{n} eq v }
+    where open import Function using (case_of_)
+
+  applySubst-commute : ∀ {x} {n} {eq : Eq x} {m} {m'}
+                          {θ' : x ⨁ m → Type (x ⨁ m')}
+                          {θ : x ⨁ n → Type (x ⨁ m)}
+                          {Qc : SConstraint (x ⨁ n)} →
+                        constraint {m = m'} eq (
+                          (applySubst θ' ∘ applySubst θ) (proj₂ (shapify Qc))
+                        ) ≡
+                        constraint eq (
+                          applySubst θ' (proj₂ (shapify (applySubst′ θ Qc)))
+                        )
+  applySubst-commute {Qc = x ∼ x₁} = refl
+  applySubst-commute {x}{n}{eq}{m}{m'}{θ'}{θ}{Qc = Qc ∧′ Qc₁}
+    rewrite applySubst-commute {x}{n}{eq}{m}{m'}{θ'}{θ}{Qc}
+    with constraint {m = m} eq (proj₂ (shapify (applySubst′ θ Qc)))
+  ... | (n' , Qr' , solved _ θ'') = {!!}
+
+  applySubst-commute {Qc = ε} = refl
 
   simplifier-sound : {x : Set} {n : ℕ} {eq : Eq x}
                      (Q : AxiomScheme x) (Qg : SConstraint x)
                      (Qw : SConstraint (x ⨁ n))
                      → IsSound Q Qg Qw (simplifier eq n Q Qg Qw)
-  simplifier-sound {x} {n} {eq} Q Qg Qw with simplifier eq n Q Qg Qw with inspect (simplifier eq n Q Qg) Qw
-  simplifier-sound {x} {n} {eq} Q Qg (x₁ ∼ x₂) | m , Qr , X.solved .Qr θ | iC prf = {!!}
-  simplifier-sound {x} {n} {eq} Q Qg (Qw ∧′ Qw₁) | m , Qr , X.solved .Qr θ | iC prf = {!!}
-  simplifier-sound {x} {n} {eq} Q Qg ε | m , ε , X.solved .ε θ | iC prf = ent-refl
+  simplifier-sound {x} {n} {eq} Q Qg Qw
+    with simplifier eq n Q Qg Qw
+    with inspect (simplifier eq n Q Qg) Qw
+  simplifier-sound {x} {n} {eq} Q Qg (x₁ ∼ x₂)
+    | m , Qr , X.solved .Qr θ
+    | iC prf
+    with mgu′ {x}{n} eq x₁ x₂
+  simplifier-sound {x} {.m} {eq} Q Qg (x₁ ∼ x₂)
+    | m , (.x₁ ∼ .x₂) , X.solved .(x₁ ∼ x₂) .Var
+    | iC refl
+    | zero
+    rewrite left-id {τ = x₁}
+    rewrite left-id {τ = x₂}
+    = ent-refl
+  simplifier-sound {x} {n} {eq} Q Qg (x₁ ∼ x₂)
+    | m , (Qr ∧′ Qr₁) , X.solved .(Qr ∧′ Qr₁) θ
+    | iC ()
+    | suc (m' , θ')
+  simplifier-sound {x} {n} {eq} Q Qg (x₁ ∼ x₂)
+    | m , (Qr ∧′ Qr₁) , X.solved .(Qr ∧′ Qr₁) θ
+    | iC ()
+    | zero
+  simplifier-sound {x} {n} {eq} Q Qg (x₁ ∼ x₂)
+    | m , ε , X.solved .ε θ
+    | iC prf
+    | suc (m₁ , θ₁) = {!!}
+  simplifier-sound {x} {n} {eq} Q Qg (Qw ∧′ Qw₁)
+    | m , Qr , X.solved .Qr θ
+    | iC prf with simplifier eq n Q Qg Qw
+  ... | m' , Qr' , solved .Qr' θ' with simplifier eq m' Q Qg (applySubst′ θ' Qw₁)
+  ... |  m'' , Qr'' , solved .Qr'' θ'' = {!!}
+  simplifier-sound {x} {n} {eq} Q Qg ε
+    | m , ε , X.solved .ε θ
+    | iC prf = ent-refl
 
   simplification : Simplification
   simplification = record {simplifier = simplifier; simplifier-sound = λ {x}{n}{eq} → simplifier-sound {x}{n}{eq} }
