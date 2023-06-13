@@ -350,6 +350,27 @@ module OutsideIn.Instantiations.Simple where
     case shapify con₂ of λ { (r , v) → constraint {r}{x}{n} eq v }
     where open import Function using (case_of_)
 
+
+  applySubst-composition : ∀ {x} {n} {m} {m'}
+                              {θ : x ⨁ n → Type (x ⨁ m)}
+                              {θ' : x ⨁ m → Type (x ⨁ m')}
+                              {Qc : SConstraint (x ⨁ n)} →
+                            (applySubst θ' ∘ applySubst θ) (proj₂ (shapify Qc)) ≡
+                            applySubst (Monad._>=>_ type-is-monad θ' θ) (proj₂ (shapify Qc))
+  applySubst-composition {θ = θ} {θ' = θ'} {Qc = x ∼ x'}
+    rewrite assoc {a = θ'} {b = θ} {τ = x}
+    rewrite assoc {a = θ'} {b = θ} {τ = x'} = refl
+  applySubst-composition {x}{n}{m}{m'}{θ}{θ'}{Qc = Qc ∧′ Qc'}
+    with shapify Qc
+    with inspect shapify Qc
+    with shapify Qc'
+    with inspect shapify Qc'
+  ... | .(proj₁ (shapify Qc)) , .(proj₂ (shapify Qc)) | iC refl | r' , b | iC refl
+    rewrite applySubst-composition {x}{n}{m}{m'}{θ}{θ'}{Qc}
+    rewrite applySubst-composition {x}{n}{m}{m'}{θ}{θ'}{Qc'} = refl
+    where open Monad (type-is-monad)
+  applySubst-composition {Qc = ε} = refl
+
   applySubst-commute : ∀ {x} {n} {eq : Eq x} {m} {m'}
                           {θ' : x ⨁ m → Type (x ⨁ m')}
                           {θ : x ⨁ n → Type (x ⨁ m)}
@@ -361,11 +382,10 @@ module OutsideIn.Instantiations.Simple where
                           applySubst θ' (proj₂ (shapify (applySubst′ θ Qc)))
                         )
   applySubst-commute {Qc = x ∼ x₁} = refl
-  applySubst-commute {x}{n}{eq}{m}{m'}{θ'}{θ}{Qc = Qc ∧′ Qc₁}
+  applySubst-commute {x}{n}{eq}{m}{m'}{θ'}{θ}{Qc = Qc ∧′ Qc'}
     rewrite applySubst-commute {x}{n}{eq}{m}{m'}{θ'}{θ}{Qc}
-    with constraint {m = m} eq (proj₂ (shapify (applySubst′ θ Qc)))
+    with constraint {m = m'} eq (applySubst θ' (proj₂ (shapify (applySubst′ θ Qc))))
   ... | (n' , Qr' , solved _ θ'') = {!!}
-
   applySubst-commute {Qc = ε} = refl
 
   simplifier-sound : {x : Set} {n : ℕ} {eq : Eq x}
