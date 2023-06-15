@@ -412,62 +412,65 @@ module OutsideIn.Instantiations.Simple where
             ≡ constraint eq (applySubst Var (applySubst θ (proj₂ (shapify Qc))))
           † rewrite applySubst-unit {Qs = applySubst θ (proj₂ (shapify Qc))} = refl
 
-  simplifier-sound : {x : Set} {n : ℕ} {eq : Eq x} {s : Shape}
+  simplifier-sound : {x : Set} {n : ℕ} {eq : Eq x}
                      (Q : AxiomScheme x) (Qg : SConstraint x)
                      (Qw : SConstraint (x ⨁ n))
+                     {s : Shape}
                      → s ≡ proj₁ (shapify Qw)
                      → IsSound Q Qg Qw (simplifier eq n Q Qg Qw)
-  simplifier-sound {x} {n} {eq} Q Qg Qw
+  simplifier-sound {x} {n} {eq} Q Qg Qw _
     with simplifier eq n Q Qg Qw
     with inspect (simplifier eq n Q Qg) Qw
-  simplifier-sound {x} {n} {eq} Q Qg (x₁ ∼ x₂)
+  simplifier-sound {x} {n} {eq} Q Qg (x₁ ∼ x₂) _
     | m , Qr , X.solved .Qr θ
     | iC prf
     with mgu′ {x}{n} eq x₁ x₂
-  simplifier-sound {x} {.m} {eq} Q Qg (x₁ ∼ x₂)
+  simplifier-sound {x} {.m} {eq} Q Qg (x₁ ∼ x₂) _
     | m , (.x₁ ∼ .x₂) , X.solved .(x₁ ∼ x₂) .Var
     | iC refl
     | zero
     rewrite left-id {τ = x₁}
     rewrite left-id {τ = x₂}
-    = λ _ → ent-refl
-  simplifier-sound {x} {n} {eq} Q Qg (x₁ ∼ x₂)
+    = ent-refl
+  simplifier-sound {x} {n} {eq} Q Qg (x₁ ∼ x₂) _
     | m , (Qr ∧′ Qr₁) , X.solved .(Qr ∧′ Qr₁) θ
     | iC ()
     | suc (m' , θ')
-  simplifier-sound {x} {n} {eq} Q Qg (x₁ ∼ x₂)
+  simplifier-sound {x} {n} {eq} Q Qg (x₁ ∼ x₂) _
     | m , (Qr ∧′ Qr₁) , X.solved .(Qr ∧′ Qr₁) θ
     | iC ()
     | zero
-  simplifier-sound {x} {n} {eq} Q Qg (x₁ ∼ x₂)
+  simplifier-sound {x} {n} {eq} Q Qg (x₁ ∼ x₂) _
     | m , ε , X.solved .ε θ
     | iC refl
     | suc (m₁ , θ₁) = {!!}
-  simplifier-sound {x} {n} {eq} {s = Binary a b} Q Qg (Qw ∧′ Qw')
+  simplifier-sound {x} {n} {eq} Q Qg (Qw ∧′ Qw') {Binary a b} shape-prf
     | m , Qr , X.solved .Qr θ
     | iC prf
     with simplifier eq n Q Qg Qw
     with inspect (simplifier eq n Q Qg) Qw
-    with simplifier-sound {x} {n} {eq} {a} Q Qg Qw
+    with simplifier-sound {x} {n} {eq} Q Qg Qw  {a}
   ... | m' , Qr' , solved .Qr' θ' | iC prf' | Qw-sound
     with simplifier eq m' Q Qg (applySubst′ θ' Qw')
     with inspect (simplifier eq m' Q Qg) (applySubst′ θ' Qw')
-    with simplifier-sound {x} {m'} {eq} {b} Q Qg (applySubst′ θ' Qw')
-  ... | m'' , Qr'' , solved .Qr'' θ'' | iC prf'' | Qw'-sound
-    rewrite applySubst-commute {x}{n}{eq}{m'}{θ'}{Qw'}
-    rewrite prf'
-    rewrite prf''
-    = λ x → {!!}
-  simplifier-sound {x} {n} {eq} Q Qg ε
+    with simplifier-sound {x} {m'} {eq} Q Qg (applySubst′ θ' Qw') {b}
+  simplifier-sound {x} {n} {eq} Q Qg (Qw ∧′ Qw') {Binary .(proj₁ (shapify Qw)) .(proj₁ (shapify Qw'))} refl
+    | m , Qr , solved .Qr θ
+    | iC prf
+    | m' , Qr' , solved .Qr' θ'
+    | iC prf' | Qw-sound
+    | m'' , Qr'' , solved .Qr'' θ''
+    | iC prf'' | Qw'-sound = {!!}
+  simplifier-sound {x} {n} {eq} Q Qg ε _
     | m , ε , X.solved .ε θ
-    | iC prf = λ _ → ent-refl
+    | iC prf = ent-refl
 
   simplification : Simplification
   simplification = record {
     simplifier = simplifier;
     simplifier-sound = λ {x}{n}{eq} Q Qg Qw →
       let s , _ = shapify Qw in
-      simplifier-sound {x}{n}{eq}{s} Q Qg Qw refl
+      simplifier-sound {x}{n}{eq} Q Qg Qw {s} refl
     }
 
   Simple : (ℕ → Set) → X
