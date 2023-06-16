@@ -97,6 +97,11 @@ module OutsideIn.Instantiations.Simple where
   ... | zero = zero
   ... | suc n = suc (suc n)
 
+  thick-ident : ∀ {n} → (x : Fin (suc n)) → thick x x ≡ zero
+  thick-ident zero = refl
+  thick-ident (suc zero) = refl
+  thick-ident (suc (suc x)) rewrite thick-ident (suc x) = refl
+
   check : ∀ {tc}{n} → Fin (suc n) → Type (SVar tc (suc n)) → Ⓢ (Type (SVar tc n))
   check x (funTy) = suc funTy
   check x (Var (base v)) = suc (Var (base v))
@@ -163,6 +168,23 @@ module OutsideIn.Instantiations.Simple where
     where module Ⓢ-f = Functor (Monad.is-functor Ⓢ-is-monad)
           open Monad (type-is-monad)
 
+  amgu-sound : ∀{tc}{m}{n}{al} → (eq : Eq tc) (s t : Type (SVar tc m))
+    → suc (n , al) ≡ amgu eq s t (m , anil)
+    → Monad._>>=_ type-is-monad  s (sub al) ≡ Monad._>>=_ type-is-monad t (sub al)
+  amgu-sound {m = m} eq s t prf with amgu eq s t (m , anil) with inspect (amgu eq s t) (m , anil)
+  amgu-sound {m = m} eq funTy funTy refl | suc (n' , al') | iC prf = refl
+  amgu-sound {m = suc m} eq funTy (Var (unification x)) refl | suc (.m , .(anil asnoc funTy / x)) | iC refl rewrite thick-ident x = refl
+  amgu-sound {tc} {zero} eq funTy (Var (unification x)) refl | suc (n' , al') | iC prf with flexRigid {tc} x funTy
+  amgu-sound {tc} {zero} {n''} {al''} eq funTy (Var (unification ())) refl | suc (n'' , al'') | iC refl | suc (n'' , al'')
+  amgu-sound {tc} {zero} {n'} {al'} eq funTy (Var (unification x)) refl | suc (n' , al') | iC () | zero
+  amgu-sound {m = m} eq (s · s₁) (t · t₁) refl | suc (n' , al') | iC prf with amgu eq s t (m , anil) with inspect (amgu eq s t) (m , anil)
+  ... | suc (n'' , al'') | iC prf' with amgu eq s₁ t₁ (n'' , al'') with inspect (amgu eq s₁ t₁) (n'' , al'')
+  amgu-sound {m = m} {.n'''} {.al'''} eq (s · s₁) (t · t₁) refl | suc (.n''' , .al''') | iC refl | suc (n'' , al'') | iC prf' | suc (n''' , al''') | iC prf''
+    = {!!}
+    where open Monad (type-is-monad)
+  amgu-sound {m = m} eq (s · s₁) (Var x) refl | suc (n' , al') | iC prf = {!!}
+  amgu-sound {m = m} eq (Var x) t refl | suc (n' , al') | iC prf = {!!}
+  amgu-sound {m = m} eq s t () | zero | _
 
 
   mgu : ∀{tc}{m}(eq : Eq tc)(s t : Type (SVar tc m)) → Ⓢ (∃ (AList tc m))
@@ -489,7 +511,7 @@ module OutsideIn.Instantiations.Simple where
     rewrite applySubst-commute {x}{n}{eq}{m'}{θ'}{Qw'}
     rewrite prf' rewrite prf''
     = ent-trans
-      ent-sym
+        ent-sym
         (ent-trans
           ent-proj
           (contract-preserve
@@ -523,7 +545,7 @@ module OutsideIn.Instantiations.Simple where
                 (subst
                   (λ Qw → (coerceAxioms Q , Qr'' ⊩ Qw))
                   ((†' {Qw'}))
-                  (ent-trans (ent-conj ent-taut ent-refl) (Qw'-sound †))
+                  (ent-trans (ent-conj ent-taut ent-refl) (Qw'-sound († {Qw'})))
                 )
               )
             )
