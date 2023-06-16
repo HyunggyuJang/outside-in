@@ -230,14 +230,12 @@ module OutsideIn.Instantiations.Simple where
   constraint-types : ∀{a b} → (Type a → Type b) → (SConstraint a → SConstraint b)  
   constraint-types f ε = ε 
   constraint-types f (a ∧′ b) = constraint-types f a ∧′ constraint-types f b
-  constraint-types f (a ∼ b) = f a ∼ f b 
+  constraint-types f (a ∼ b) = f a ∼ f b
 
   applySubst′ : ∀ {a b} → (a → Type b) → SConstraint a  → SConstraint b 
-  applySubst′ f (a ∼ b) = (a >>= f) ∼ (b >>= f)
+  applySubst′ f Qc = constraint-types (λ a → (a >>= f)) Qc
     where open Monad (type-is-monad)
-  applySubst′ f (a ∧′ b) = applySubst′ f a ∧′ applySubst′ f b
-  applySubst′ f (ε) = ε
-  
+
   data AxiomScheme (n : Set) : Set where
     ax : AxiomScheme n
 
@@ -267,20 +265,33 @@ module OutsideIn.Instantiations.Simple where
                           ; constraint-types = constraint-types
                           ; _∼_ = _∼_; _∧_ = _∧′_; ε = ε; is-ε = is-ε
                           }
+  qc-substitute-unit : ∀{a} {Qc : QConstraints.QConstraint qconstraints a} → QConstraints.qc-substitute qconstraints (Type.Var) Qc ≡ Qc
+  qc-substitute-unit {Qc = x ∼ x₁} rewrite left-id {τ = x} rewrite left-id {τ = x₁} = refl
+  qc-substitute-unit {Qc = Qc ∧′ Qc₁} rewrite qc-substitute-unit {Qc = Qc} rewrite qc-substitute-unit {Qc = Qc₁} = refl
+  qc-substitute-unit {Qc = ε} = refl
+
 
 
   open Monad (type-is-monad) hiding (_>=>_)
   open Functor (type-is-functor)
   data _,_⊩_ {n : Set}(Q : AxiomScheme n) : SConstraint n → SConstraint n → Set where
-    ent-refl  : ∀ {q q′} → Q , (q ∧′ q′) ⊩ q′ 
-    ent-trans : ∀ {q q₁ q₂ q₃} → Q , (q ∧′ q₁) ⊩ q₂ → Q , (q ∧′ q₂) ⊩ q₃ → Q , (q ∧′ q₁) ⊩ q₃
+    ent-taut  : ∀ {q} → Q , q ⊩ ε
+    ent-refl  : ∀ {q} → Q , q  ⊩ q
+    ent-sym  : ∀ {q q′} → Q , (q ∧′ q′)  ⊩ (q′ ∧′ q)
+    ent-proj  : ∀ {q q′} → Q , (q ∧′ q′)  ⊩ q
+    ent-trans : ∀ {q₁ q₂ q₃} → Q , q₁ ⊩ q₂ → Q , q₂ ⊩ q₃ → Q , q₁ ⊩ q₃
     ent-typeq-refl : ∀ {q}{τ} → Q , q ⊩ (τ ∼ τ)
     ent-typeq-sym : ∀ {q}{τ₁ τ₂} → Q , q ⊩ (τ₁ ∼ τ₂) → Q , q ⊩ (τ₂ ∼ τ₁)
     ent-typeq-trans : ∀ {q}{τ₁ τ₂ τ₃} → Q , q ⊩ (τ₁ ∼ τ₂) → Q , q ⊩ (τ₂ ∼ τ₃) → Q , q ⊩ (τ₁ ∼ τ₃)
     ent-conj : ∀ {q q₁ q₂} → Q , q ⊩ q₁ → Q , q ⊩ q₂ → Q , q ⊩ (q₁ ∧′ q₂)
 
-  ent-subst : ∀ {a b}{θ : a → Type b}{Q : AxiomScheme a}{q q₁ q₂ : SConstraint a} → Q , (q ∧′ q₁) ⊩ q₂ → coerceAxioms Q , constraint-types (join ∘ map θ) (q ∧′ q₁) ⊩ constraint-types (join ∘ map θ) q₂
+  ent-subst : ∀ {a b}{θ : a → Type b}{Q : AxiomScheme a}{q₁ q₂ : SConstraint a}
+    → Q , q₁ ⊩ q₂
+    → coerceAxioms Q , applySubst′ θ q₁ ⊩ applySubst′ θ q₂
+  ent-subst ent-taut = ent-taut
   ent-subst ent-refl = ent-refl
+  ent-subst ent-sym = ent-sym
+  ent-subst ent-proj = ent-proj
   ent-subst (ent-trans a b) = ent-trans (ent-subst a) (ent-subst b)
   ent-subst (ent-typeq-refl) = ent-typeq-refl
   ent-subst (ent-typeq-sym a) = ent-typeq-sym (ent-subst a)
@@ -288,9 +299,10 @@ module OutsideIn.Instantiations.Simple where
   ent-subst (ent-conj a b) = ent-conj (ent-subst a) (ent-subst b)
 
   ent-typeq-subst : ∀ {a b}{Q : AxiomScheme a}{q : SConstraint a}{τ₁ τ₂ : Type a}{θ : a → Type b} 
-                  → Q , q ⊩ (τ₁ ∼ τ₂) → coerceAxioms Q , constraint-types (join ∘ map θ) q 
+                  → Q , q ⊩ (τ₁ ∼ τ₂) → coerceAxioms Q , applySubst′ θ q
                                       ⊩ ((join ∘ map θ) τ₁ ∼ (join ∘ map θ) τ₂)
   ent-typeq-subst ent-refl = ent-refl
+  ent-typeq-subst ent-proj = ent-proj
   ent-typeq-subst (ent-trans a b) = ent-trans (ent-subst a) (ent-typeq-subst b)
   ent-typeq-subst (ent-typeq-refl) = ent-typeq-refl
   ent-typeq-subst (ent-typeq-sym a) = ent-typeq-sym (ent-typeq-subst a)
@@ -323,6 +335,20 @@ module OutsideIn.Instantiations.Simple where
 
   open SimplificationPrelude ⦃ types ⦄ ⦃ axiom-schemes ⦄ ⦃ qconstraints ⦄ ⦃ entailment ⦄
 
+  _contract-∧'_ : ∀ {x} → (Q Q' : SConstraint x) → SConstraint x
+  Q contract-∧' Q' with is-ε Q with is-ε Q'
+  ... | false because _ | yes refl = Q
+  ... | yes refl | _ because _ = Q'
+  ... | false because _ | false because _ = Q ∧′ Q'
+
+  contract-preserve : ∀ {x} → {Q : AxiomScheme x} (Qc Qc' Qw Qw' : SConstraint x)
+    → Q , (Qc ∧′ Qc') ⊩ (Qw ∧′ Qw') → Q , (Qc contract-∧' Qc') ⊩ (Qw ∧′ Qw')
+  contract-preserve Qc Qc' Qw Qw' Qent with is-ε Qc with is-ε Qc'
+  ... | false because _ | false because _ = Qent
+  ... | false because _ | yes refl = ent-trans (ent-conj ent-refl ent-taut) Qent
+  ... | yes refl | does₂ because _ = ent-trans (ent-conj ent-taut ent-refl) Qent
+
+
   constraint : ∀{s}{tc}{m} → Eq tc → SConstraintShape (tc ⨁ m) s → SimplifierResult tc m
   constraint {Unary _} _ ()
   constraint {Nullary}{m = m} _ ε = m , ε , solved ε Var
@@ -334,11 +360,7 @@ module OutsideIn.Instantiations.Simple where
   constraint {Binary r₁ r₂}{tc}{m} eq (a ∧′ b) =
     case (constraint {r₁}{tc}{m} eq a) of λ { (n , Qr , solved _ θ) →
       case (constraint {r₂}{tc}{n} eq (applySubst θ b)) of λ { (n′ , Qr′ , solved _ θ′) →
-        n′ , (case (Qr′ , applySubst′ θ′ Qr) of λ {
-          (ε , n) → n;
-          (n , ε) → n;
-          (n , n') → n ∧′ n'
-        }) , solved _ (θ′ >=> θ)
+        n′ , Qr′ contract-∧' (applySubst′ θ′ Qr) , solved _ (θ′ >=> θ)
       }
     }
     where open import Function using (case_of_)
@@ -348,9 +370,10 @@ module OutsideIn.Instantiations.Simple where
   
   simplifier : {x : Set} → Eq x → (n : ℕ) → AxiomScheme x → SConstraint x 
                          → SConstraint (x ⨁ n) → SimplifierResult x n
-  simplifier {x} eq n _ _ con₂ =
-    case shapify con₂ of λ { (r , v) → constraint {r}{x}{n} eq v }
+  simplifier {x} eq n _ con₁ con₂ with is-ε con₁
+  ... | yes refl = case shapify con₂ of λ { (r , v) → constraint {r}{x}{n} eq v }
     where open import Function using (case_of_)
+  ... | no _ = n , con₂ , solved _ Var
 
 
   applySubst-composition : ∀ {x} {n} {m} {m'}
@@ -418,52 +441,112 @@ module OutsideIn.Instantiations.Simple where
                      {s : Shape}
                      → s ≡ proj₁ (shapify Qw)
                      → IsSound Q Qg Qw (simplifier eq n Q Qg Qw)
-  simplifier-sound {x} {n} {eq} Q Qg Qw _
-    with simplifier eq n Q Qg Qw
-    with inspect (simplifier eq n Q Qg) Qw
+  simplifier-sound {x} {n} {eq} Q Qg Qw _ with is-ε Qg
+  ... | no _ rewrite qc-substitute-unit {Qc = Qw} = ent-trans ent-sym ent-proj
   simplifier-sound {x} {n} {eq} Q Qg (x₁ ∼ x₂) _
-    | m , Qr , X.solved .Qr θ
-    | iC prf
+    | yes refl
+    with simplifier eq n Q Qg (x₁ ∼ x₂)
+    with inspect (simplifier eq n Q Qg) (x₁ ∼ x₂)
+  ... | m , Qr , X.solved .Qr θ | iC prf
     with mgu′ {x}{n} eq x₁ x₂
   simplifier-sound {x} {.m} {eq} Q Qg (x₁ ∼ x₂) _
+    | yes refl
     | m , (.x₁ ∼ .x₂) , X.solved .(x₁ ∼ x₂) .Var
     | iC refl
     | zero
     rewrite left-id {τ = x₁}
     rewrite left-id {τ = x₂}
-    = ent-refl
+    = ent-trans ent-sym ent-proj
   simplifier-sound {x} {n} {eq} Q Qg (x₁ ∼ x₂) _
+    | yes refl
     | m , (Qr ∧′ Qr₁) , X.solved .(Qr ∧′ Qr₁) θ
     | iC ()
     | suc (m' , θ')
   simplifier-sound {x} {n} {eq} Q Qg (x₁ ∼ x₂) _
+    | yes refl
     | m , (Qr ∧′ Qr₁) , X.solved .(Qr ∧′ Qr₁) θ
     | iC ()
     | zero
   simplifier-sound {x} {n} {eq} Q Qg (x₁ ∼ x₂) _
+    | yes refl
     | m , ε , X.solved .ε θ
     | iC refl
     | suc (m₁ , θ₁) = {!!}
   simplifier-sound {x} {n} {eq} Q Qg (Qw ∧′ Qw') {Binary a b} shape-prf
-    | m , Qr , X.solved .Qr θ
-    | iC prf
+    | yes refl
     with simplifier eq n Q Qg Qw
     with inspect (simplifier eq n Q Qg) Qw
     with simplifier-sound {x} {n} {eq} Q Qg Qw  {a}
-  ... | m' , Qr' , solved .Qr' θ' | iC prf' | Qw-sound
+  ... |  m' , Qr' , solved .Qr' θ' | iC prf' | Qw-sound
     with simplifier eq m' Q Qg (applySubst′ θ' Qw')
     with inspect (simplifier eq m' Q Qg) (applySubst′ θ' Qw')
     with simplifier-sound {x} {m'} {eq} Q Qg (applySubst′ θ' Qw') {b}
   simplifier-sound {x} {n} {eq} Q Qg (Qw ∧′ Qw') {Binary .(proj₁ (shapify Qw)) .(proj₁ (shapify Qw'))} refl
-    | m , Qr , solved .Qr θ
-    | iC prf
-    | m' , Qr' , solved .Qr' θ'
-    | iC prf' | Qw-sound
-    | m'' , Qr'' , solved .Qr'' θ''
-    | iC prf'' | Qw'-sound = {!!}
+    | yes refl
+    | m' , Qr' , X.solved .Qr' θ' | iC prf'
+    | Qw-sound | m'' , Qr'' , X.solved .Qr'' θ'' | iC prf''
+    | Qw'-sound
+    rewrite applySubst-commute {x}{n}{eq}{m'}{θ'}{Qw'}
+    rewrite prf' rewrite prf''
+    = ent-trans
+      ent-sym
+        (ent-trans
+          ent-proj
+          (contract-preserve
+            Qr''
+            (applySubst′ θ'' Qr')
+            _ _
+            (ent-conj
+              (ent-trans ent-sym
+                (ent-trans ent-proj
+                  (subst
+                    (λ Q → (Q , applySubst′ θ'' Qr' ⊩ applySubst′ (θ'' >=> θ') Qw))
+                    †''
+                    (subst
+                      (λ Qw →
+                        (coerceAxioms
+                          (coerceAxioms Q) , applySubst′ θ'' Qr' ⊩ Qw
+                        )
+                      )
+                      (†' {Qw})
+                      (ent-subst {θ = θ''}
+                        (ent-trans
+                          (ent-conj ent-taut ent-refl)
+                          (Qw-sound refl)
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (ent-trans ent-proj
+                (subst
+                  (λ Qw → (coerceAxioms Q , Qr'' ⊩ Qw))
+                  ((†' {Qw'}))
+                  (ent-trans (ent-conj ent-taut ent-refl) (Qw'-sound †))
+                )
+              )
+            )
+          )
+        )
+    where open Monad(type-is-monad)
+          † : ∀ {Qc} → proj₁ (shapify Qc) ≡ proj₁ (shapify (applySubst′ θ' Qc))
+          † {x ∼ x₁} = refl
+          † {Qc ∧′ Qc₁} rewrite † {Qc} rewrite † {Qc₁} = refl
+          † {ε} = refl
+          †' : ∀ {Qc} → applySubst′ θ'' (applySubst′ θ' Qc) ≡ applySubst′ (θ'' >=> θ') Qc
+          †' {x ∼ x₁}
+            rewrite assoc {a = θ''} {b = θ'} {τ = x₁}
+            rewrite assoc {a = θ''} {b = θ'} {τ = x} = refl
+          †' {Qc ∧′ Qc₁} rewrite †' {Qc} rewrite †' {Qc₁} = refl
+          †' {ε} = refl
+          †'' : ∀ {Q} → coerceAxioms {x ⨁ m'} {x ⨁ m''} (coerceAxioms Q) ≡ coerceAxioms Q
+          †'' {ax} = refl
   simplifier-sound {x} {n} {eq} Q Qg ε _
-    | m , ε , X.solved .ε θ
-    | iC prf = ent-refl
+    | yes refl
+    with simplifier eq n Q Qg ε
+    with inspect (simplifier eq n Q Qg) ε
+  ... | m , ε , X.solved .ε θ | iC prf = ent-trans ent-sym ent-proj
 
   simplification : Simplification
   simplification = record {

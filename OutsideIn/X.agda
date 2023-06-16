@@ -21,7 +21,7 @@ module OutsideIn.X where
            is-ε : ∀ {n} (x : QConstraint n) → Dec (x ≡ ε)
      open Monad   (type-is-monad)
      open Functor (is-functor)
-     qc-substitute : ∀{a b} →  (a → Type b) → (QConstraint a → QConstraint b)
+     qc-substitute : ∀{a b} → (a → Type b) → (QConstraint a → QConstraint b)
      qc-substitute f =  constraint-types (join ∘ map f)
 
    record AxiomSchemes ⦃ types : Types ⦄ : Set₁ where
@@ -44,12 +44,12 @@ module OutsideIn.X where
 
      field _,_⊩_ : ∀ {n} → AxiomScheme n → QConstraint n → QConstraint n → Set
            ent-refl : ∀ {n}{Q : AxiomScheme n}{q q′ : QConstraint n}
-                    → Q , (q ∧ q′) ⊩ q′
-           ent-trans : ∀ {n}{Q : AxiomScheme n}{q q₁ q₂ q₃ : QConstraint n}
-                     → Q , (q ∧ q₁) ⊩ q₂ → Q , (q ∧ q₂) ⊩ q₃ → Q , (q ∧ q₁) ⊩ q₃
+                    → Q , q ⊩ q
+           ent-trans : ∀ {n}{Q : AxiomScheme n}{q₁ q₂ q₃ : QConstraint n}
+                     → Q , q₁ ⊩ q₂ → Q , q₂ ⊩ q₃ → Q , q₁ ⊩ q₃
            ent-subst : ∀ {a b}{θ : a → Type b}{Q : AxiomScheme a}{q q₁ q₂ : QConstraint a}
-                     → Q , (q ∧ q₁) ⊩ q₂ → axiomscheme-types (join ∘ map θ) Q 
-                                         , constraint-types (join ∘ map θ) (q ∧ q₁)
+                     → Q , q₁ ⊩ q₂ → axiomscheme-types (join ∘ map θ) Q
+                                         , constraint-types (join ∘ map θ) q₁
                                          ⊩ constraint-types (join ∘ map θ) q₂
            ent-typeq-refl : ∀ {n}{Q : AxiomScheme n}{q : QConstraint n}{τ : Type n}
                           → Q , q ⊩ (τ ∼ τ)
