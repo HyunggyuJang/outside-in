@@ -317,9 +317,7 @@ module OutsideIn.Instantiations.Simple where
   ... | suc (n'' , al'') | iC prf'' rewrite amgu-sound eq s₁ t₁ prf'
     = cong
       (λ x → x · (t₁ >>= (sub al')))
-      (alist-invariant {s = s} {t = t} {al = al''}
-        (amgu-extend {s = s₁} {t = t₁} {eq = eq} prf')
-        (amgu-sound eq s t prf''))
+      (amgu-weak {s = s} {t = t} {s' = s₁} {t' = t₁} prf' (amgu-sound eq s t prf''))
     where open Monad (type-is-monad)
   amgu-sound {m = .(suc m')} {acc = suc m' , anil} eq (s · s₁) (Var (unification x)) refl | suc (n' , al') | iC prf' with check x (s · s₁) with inspect (check x) (s · s₁)
   amgu-sound {_} {.(suc m')} {.m'} {.(anil asnoc rlt / x)} {suc m' , anil} eq (s · s₁) (Var (unification x)) refl | suc (.m' , .(anil asnoc rlt / x)) | iC refl | suc rlt | iC prf''
@@ -347,7 +345,13 @@ module OutsideIn.Instantiations.Simple where
     ∎
     where open ≡-Reasoning
           open Monad (type-is-monad)
-  amgu-sound {m = m} {acc = acc} eq (Var x) t prf | suc (n' , al') | iC prf' = {!!}
+  amgu-sound {m = m} {acc = acc} eq (Var (base x)) (Var (base x₁)) prf | suc (n' , al') | iC prf' with Eq.eq eq x x₁
+  ... | true = {!!}
+  amgu-sound {m = m} {acc = acc} eq (Var (base x)) (Var (base x₁)) prf | suc (n' , al') | iC () | false
+  amgu-sound {m = m} {acc = acc} eq (Var (base x)) (Var (unification x₁)) prf | suc (n' , al') | iC prf' = {!!}
+  amgu-sound {m = m} {acc = acc} eq (Var (unification x)) (Var x') prf | suc (n' , al') | iC prf' = {!!}
+  amgu-sound {m = m} {acc = acc} eq (Var x) funTy prf | suc (n' , al') | iC prf' = {!!}
+  amgu-sound {m = m} {acc = acc} eq (Var x) (t · t₁) prf | suc (n' , al') | iC prf' = {!!}
 
 
   mgu : ∀{tc}{m}(eq : Eq tc)(s t : Type (SVar tc m)) → Ⓢ (∃ (AList tc m))
