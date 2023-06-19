@@ -337,9 +337,16 @@ module OutsideIn.Instantiations.Simple where
   amgu-sound {m = .(suc _)} {acc = m' , (snd asnoc x₁ / x₂)} eq (s · s₁) (Var (unification x)) refl | suc (n' , al') | iC prf' with † (m' , snd) with inspect † (m' , snd)
     where open Monad (type-is-monad)
           † = amgu eq ((s · s₁) >>= (x₁ for x₂)) (Var (unification x) >>= (x₁ for x₂))
-  amgu-sound {_} {.(suc _)} {.n''} {.(al'' asnoc x₁ / x₂)} {m' , (σ asnoc x₁ / x₂)} eq (s · s₁) (Var (unification x)) refl | suc (.n'' , .(al'' asnoc x₁ / x₂)) | iC refl | suc (n'' , al'') | iC prf''
-    = {!!}
-    where open Monad (type-is-monad)
+  amgu-sound {_} {.(suc _)} {.n''} {.(al'' asnoc t' / x')} {m' , (σ asnoc t' / x')} eq (s · s₁) (Var (unification x)) refl | suc (.n'' , .(al'' asnoc t' / x')) | iC refl | suc (n'' , al'') | iC prf''
+    = begin
+      (s >>= (sub al'' >=> (t' for x'))) · (s₁ >>= (sub al'' >=> (t' for x')))
+      ≡⟨ cong₂ _·_ (>>=->=>commute {s = s}) (>>=->=>commute {s = s₁}) ⟩
+        ((s >>= (t' for x')) >>= sub al'') · ((s₁ >>= (t' for x')) >>= sub al'')
+      ≡⟨ amgu-sound eq ((s >>= (t' for x')) · (s₁ >>= (t' for x'))) ((t' for x') (unification x)) prf'' ⟩
+        (t' for x') (unification x) >>= sub al''
+    ∎
+    where open ≡-Reasoning
+          open Monad (type-is-monad)
   amgu-sound {m = m} {acc = acc} eq (Var x) t prf | suc (n' , al') | iC prf' = {!!}
 
 
