@@ -168,23 +168,150 @@ module OutsideIn.Instantiations.Simple where
     where module Ⓢ-f = Functor (Monad.is-functor Ⓢ-is-monad)
           open Monad (type-is-monad)
 
-  amgu-sound : ∀{tc}{m}{n}{al} → (eq : Eq tc) (s t : Type (SVar tc m))
-    → suc (n , al) ≡ amgu eq s t (m , anil)
-    → Monad._>>=_ type-is-monad  s (sub al) ≡ Monad._>>=_ type-is-monad t (sub al)
-  amgu-sound {m = m} eq s t prf with amgu eq s t (m , anil) with inspect (amgu eq s t) (m , anil)
-  amgu-sound {m = m} eq funTy funTy refl | suc (n' , al') | iC prf = refl
-  amgu-sound {m = suc m} eq funTy (Var (unification x)) refl | suc (.m , .(anil asnoc funTy / x)) | iC refl rewrite thick-ident x = refl
-  amgu-sound {tc} {zero} eq funTy (Var (unification x)) refl | suc (n' , al') | iC prf with flexRigid {tc} x funTy
-  amgu-sound {tc} {zero} {n''} {al''} eq funTy (Var (unification ())) refl | suc (n'' , al'') | iC refl | suc (n'' , al'')
-  amgu-sound {tc} {zero} {n'} {al'} eq funTy (Var (unification x)) refl | suc (n' , al') | iC () | zero
-  amgu-sound {m = m} eq (s · s₁) (t · t₁) refl | suc (n' , al') | iC prf with amgu eq s t (m , anil) with inspect (amgu eq s t) (m , anil)
-  ... | suc (n'' , al'') | iC prf' with amgu eq s₁ t₁ (n'' , al'') with inspect (amgu eq s₁ t₁) (n'' , al'')
-  amgu-sound {m = m} {.n'''} {.al'''} eq (s · s₁) (t · t₁) refl | suc (.n''' , .al''') | iC refl | suc (n'' , al'') | iC prf' | suc (n''' , al''') | iC prf''
-    = {!!}
+  data Alist-extend : ∀{tc}{m n n'} → AList tc m n' → AList tc m n → Set where
+    alist-extend-base : ∀{tc}{m n}{al' : AList tc m n} → Alist-extend al' anil
+    alist-extend-asnoc : ∀{tc}{m n n'}{t : Type (SVar tc m)}{x : Fin (suc m)}
+      {al' : AList tc m n}{al : AList tc m n'}
+      → Alist-extend al' al
+      → Alist-extend (al' asnoc t / x) (al asnoc t / x)
+
+  alist-extend-id : ∀{tc}{m n}{al : AList tc m n} → Alist-extend al al
+  alist-extend-id {al = anil} = alist-extend-base
+  alist-extend-id {al = al asnoc x / x₁} = alist-extend-asnoc alist-extend-id
+
+
+  alist-extend-trans : ∀{tc}{m n n' n''}{al : AList tc m n}{al' : AList tc m n'}{al'' : AList tc m n''}
+    → Alist-extend al' al''
+    → Alist-extend al'' al
+    → Alist-extend al' al
+  alist-extend-trans alist-extend-base alist-extend-base = alist-extend-base
+  alist-extend-trans (alist-extend-asnoc al'-extend-al'') alist-extend-base = alist-extend-base
+  alist-extend-trans (alist-extend-asnoc al'-extend-al'') (alist-extend-asnoc al''-extend-al)
+    = alist-extend-asnoc (alist-extend-trans al'-extend-al'' al''-extend-al)
+
+  alist-invariant : ∀{tc}{m n n'}{s t : Type (SVar tc m)} {al : AList tc m n} {al' : AList tc m n'}
+    → Alist-extend al' al
+    → let open Monad (type-is-monad) in s >>= (sub al) ≡ t >>= (sub al)
+    → s >>= (sub al') ≡ t >>= (sub al')
+  alist-invariant {s = s} {t = t} alist-extend-base prf
+    rewrite left-id {τ = s} rewrite left-id {τ = t} rewrite prf = refl
+  alist-invariant {s = s'} {t = t'} (alist-extend-asnoc {t = t} {x = x} {al' = al'} {al = al} IH) prf = begin
+    s' >>= (sub al' >=> (t for x))
+      ≡⟨ >>=->=>commute {s = s'} ⟩ ((s' >>= (t for x)) >>= sub al')
+      ≡⟨ alist-invariant {s = s' >>= (t for x)} {t = t' >>= (t for x)} IH †
+        ⟩ (t' >>= (t for x)) >>= sub al'
+      ≡⟨ sym (>>=->=>commute {s = t'}) ⟩ t' >>= (sub al' >=> (t for x)) ∎
+    where open ≡-Reasoning
+          open Monad (type-is-monad)
+          † : ((s' >>= (t for x)) >>= sub al) ≡ ((t' >>= (t for x)) >>= sub al)
+          † = begin
+            ((s' >>= (t for x)) >>= sub al)
+              ≡⟨ sym (>>=->=>commute {s = s'}) ⟩ (s' >>= (sub al >=> (t for x)))
+              ≡⟨ prf ⟩ (t' >>= (sub al >=> (t for x)))
+              ≡⟨ >>=->=>commute {s = t'} ⟩ ((t' >>= (t for x)) >>= sub al)
+            ∎
+
+  amgu-extend : ∀{tc}{m}{n n'}{al al'}{s t : Type (SVar tc m)}{eq}
+    → amgu eq s t (n , al) ≡ suc (n' , al')
+    → Alist-extend al' al
+  amgu-extend {s = funTy} {t = funTy} refl = alist-extend-id
+  amgu-extend {al = anil} {s = funTy} {t = Var (unification x)} prf = alist-extend-base
+  amgu-extend {n = n} {al = al asnoc x₁ / x₂} {s = funTy} {t = Var (unification x)} {eq} prf with thick x₂ x
+  amgu-extend {n = n} {al = al asnoc x₁ / x₂} {s = funTy} {t = Var (unification x)} {eq} prf | suc x' with † (n , al) with inspect † (n , al)
     where open Monad (type-is-monad)
-  amgu-sound {m = m} eq (s · s₁) (Var x) refl | suc (n' , al') | iC prf = {!!}
-  amgu-sound {m = m} eq (Var x) t refl | suc (n' , al') | iC prf = {!!}
-  amgu-sound {m = m} eq s t () | zero | _
+          † = amgu eq funTy (Var (unification x'))
+  amgu-extend {n = n} {_} {al asnoc x₁ / x₂} {_} {funTy} {Var (unification x)} {eq} refl | suc x' | suc (n'' , al'') | iC prf'
+    = alist-extend-asnoc (amgu-extend {s = funTy} {t = Var (unification x')} prf')
+  amgu-extend {n = n} {_} {al asnoc x₁ / x₂} {_} {funTy} {Var (unification x)} {eq} () | suc x' | zero | iC prf'
+  amgu-extend {n = n} {al = al asnoc x₁ / x₂} {s = funTy} {t = Var (unification x)} {eq} prf | zero with † (n , al) with inspect † (n , al)
+    where open Monad (type-is-monad)
+          † = amgu eq funTy x₁
+  amgu-extend {n = n} {_} {al asnoc x₁ / x₂} {_} {funTy} {Var (unification x)} {eq} refl | zero | suc (n'' , al'') | iC prf'
+    = alist-extend-asnoc (amgu-extend {s = funTy} {t = x₁} prf')
+  amgu-extend {n = n} {al = al} {s = s · s₁} {t = t · t₁} {eq} prf with † (n , al) with inspect † (n , al)
+    where open Monad (type-is-monad)
+          † = amgu eq s t
+  ... | suc (n'' , al'') | iC prf'
+    = alist-extend-trans (amgu-extend {s = s₁} {t = t₁} prf) (amgu-extend {s = s} {t = t} prf')
+  amgu-extend {n = _} {al = anil} {s = s · s₁} {t = Var (unification x)} {eq} prf = alist-extend-base
+  amgu-extend {n = n} {al = al asnoc x₁ / x₂} {s = s · s₁} {t = Var (unification x)} {eq} prf with thick x₂ x
+  ... | suc x' with † (n , al) with inspect † (n , al)
+    where open Monad (type-is-monad)
+          † = amgu eq ((s >>= (x₁ for x₂)) · (s₁ >>= (x₁ for x₂))) (Var (unification x'))
+  amgu-extend {n = n} {_} {al asnoc x₁ / x₂} {_} {s · s₁} {Var (unification x)} {eq} refl | suc x' | suc (n'' , al'') | iC prf'
+    = alist-extend-asnoc (amgu-extend {s = (s >>= (x₁ for x₂)) · (s₁ >>= (x₁ for x₂))} {t = Var (unification x')} prf')
+    where open Monad (type-is-monad)
+  amgu-extend {n = n} {al = al asnoc x₁ / x₂} {s = s · s₁} {t = Var (unification x)} {eq} prf | zero with † (n , al) with inspect † (n , al)
+    where open Monad (type-is-monad)
+          † = amgu eq ((s >>= (x₁ for x₂)) · (s₁ >>= (x₁ for x₂))) x₁
+  amgu-extend {n = n} {_} {al asnoc x₁ / x₂} {_} {s · s₁} {Var (unification x)} {eq} refl | zero | suc (n'' , al'') | iC prf'
+    = alist-extend-asnoc (amgu-extend {s = (s >>= (x₁ for x₂)) · (s₁ >>= (x₁ for x₂))} {t = x₁} prf')
+    where open Monad (type-is-monad)
+  amgu-extend {al = anil} {s = Var (unification x)} {t = funTy} prf = alist-extend-base
+  amgu-extend {n = n} {al = al asnoc x₁ / x₂} {s = Var (unification x)} {t = funTy} {eq} prf with † (n , al) with inspect † (n , al)
+    where open Monad (type-is-monad)
+          † = amgu eq (Var (unification x) >>= (x₁ for x₂)) (funTy >>= (x₁ for x₂))
+  amgu-extend {n = n} {_} {al asnoc x₁ / x₂} {_} {Var (unification x)} {funTy} {eq} refl | suc (n'' , al'') | iC prf'
+    = alist-extend-asnoc (amgu-extend {s = (x₁ for x₂) (unification x)} {t = funTy} prf')
+  amgu-extend {n = _} {al = anil} {s = Var (unification x)} {t = t · t₁} {eq} prf = alist-extend-base
+  amgu-extend {n = n} {al = al asnoc x₁ / x₂} {s = Var (unification x)} {t = t · t₁} {eq} prf with † (n , al) with inspect † (n , al)
+    where open Monad (type-is-monad)
+          † = amgu eq (Var (unification x) >>= (x₁ for x₂)) ((t · t₁) >>= (x₁ for x₂))
+  amgu-extend {n = n} {_} {al asnoc x₁ / x₂} {_} {Var (unification x)} {t · t₁} {eq} refl | suc (n'' , al'') | iC prf'
+    = alist-extend-asnoc (amgu-extend {s = (x₁ for x₂) (unification x)} {t = (t >>= (x₁ for x₂)) · (t₁ >>= (x₁ for x₂))} prf')
+    where open Monad (type-is-monad)
+  amgu-extend {n = n} {al = al} {s = Var (base x)} {t = Var (base x₁)} {eq} prf with Eq.eq eq x x₁
+  amgu-extend {n = n} {al = al} {_} {Var (base x)} {Var (base x₁)} {eq} refl | true = alist-extend-id
+  amgu-extend {n = n} {al = al} {_} {Var (base x)} {Var (base x₁)} {eq} () | false
+  amgu-extend {n = _} {al = anil} {s = Var (base x)} {t = Var (unification x₁)} {eq} prf = alist-extend-base
+  amgu-extend {n = n} {al = al asnoc x₂ / x₃} {s = Var (base x)} {t = Var (unification x₁)} {eq} prf with † (n , al) with inspect † (n , al)
+    where open Monad (type-is-monad)
+          † = amgu eq (Var (base x) >>= (x₂ for x₃)) (Var (unification x₁) >>= (x₂ for x₃))
+  amgu-extend {n = n} {_} {al asnoc x₂ / x₃} {_} {Var (base x)} {Var (unification x₁)} {eq} refl | suc (n'' , al'') | iC prf'
+    = alist-extend-asnoc (amgu-extend {s = Var (base x)} {t = (x₂ for x₃) (unification x₁)} prf')
+  amgu-extend {n = _} {al = anil} {s = Var (unification x)} {t = Var (base x₁)} {eq} prf = alist-extend-base
+  amgu-extend {n = n} {al = al asnoc x₂ / x₃} {s = Var (unification x)} {t = Var (base x₁)} {eq} prf with † (n , al) with inspect † (n , al)
+    where open Monad (type-is-monad)
+          † = amgu eq (Var (unification x) >>= (x₂ for x₃)) (Var (base x₁) >>= (x₂ for x₃))
+  amgu-extend {n = n} {_} {al asnoc x₂ / x₃} {_} {Var (unification x)} {Var (base x₁)} {eq} refl | suc (n'' , al'') | iC prf'
+    = alist-extend-asnoc (amgu-extend {s = (x₂ for x₃) (unification x)} {t = Var (base x₁)} prf')
+  amgu-extend {n = _} {al = anil} {s = Var (unification x)} {t = Var (unification x₁)} {eq} prf = alist-extend-base
+  amgu-extend {n = n} {al = al asnoc x₂ / x₃} {s = Var (unification x)} {t = Var (unification x₁)} {eq} prf with † (n , al) with inspect † (n , al)
+    where open Monad (type-is-monad)
+          † = amgu eq (Var (unification x) >>= (x₂ for x₃)) (Var (unification x₁) >>= (x₂ for x₃))
+  amgu-extend {n = n} {_} {al asnoc x₂ / x₃} {_} {Var (unification x)} {Var (unification x₁)} {eq} refl | suc (n'' , al'') | iC prf'
+    = alist-extend-asnoc (amgu-extend {s = (x₂ for x₃) (unification x)} {t = (x₂ for x₃) (unification x₁)} prf')
+
+  amgu-weak : ∀{tc}{m}{n n'}{al al'}{eq}{s t s' t' : Type (SVar tc m)}
+    → let open Monad (type-is-monad) in amgu eq s' t' (n , al) ≡ suc (n' , al')
+    → s >>= (sub al) ≡ t >>= (sub al)
+    → s >>= (sub al') ≡ t >>= (sub al')
+  amgu-weak {s = s} {t = t} {s' = s'} {t' = t'} = (alist-invariant {s = s} {t = t}) ∘ (amgu-extend {s = s'} {t = t'})
+    where open Monad (type-is-monad)
+
+  amgu-sound : ∀{tc}{m}{n}{al}{acc} → (eq : Eq tc) (s t : Type (SVar tc m))
+    → amgu eq s t acc ≡ suc (n , al)
+    → let open Monad (type-is-monad) in s >>= (sub al) ≡ t >>= (sub al)
+  amgu-sound {m = m} {acc = acc} eq s t prf with amgu eq s t acc with inspect (amgu eq s t) acc
+  amgu-sound {m = m} {acc = acc} eq funTy funTy prf | suc (n' , al') | iC prf' = refl
+  amgu-sound {m = .(suc m₁)} {acc = suc m₁ , anil} eq funTy (Var (unification x)) refl | suc (.m₁ , .(anil asnoc funTy / x)) | iC refl rewrite thick-ident x = refl
+  amgu-sound {m = .(suc _)} {acc = m₁ , (σ asnoc t / x')} eq funTy (Var (unification x)) refl | suc (n' , al') | iC prf' with † (m₁ , σ) with inspect † (m₁ , σ)
+    where open Monad (type-is-monad)
+          † = amgu eq (funTy >>= (t for x')) (Var (unification x) >>= (t for x'))
+  amgu-sound {_} {.(suc _)} {.n''} {.(al'' asnoc t / x')} {m₁ , (σ asnoc t / x')} eq funTy (Var (unification x)) refl | suc (.n'' , .(al'' asnoc t / x')) | iC refl | suc (n'' , al'') | iC prf''
+    rewrite amgu-sound eq funTy ((t for x') (unification x)) prf'' = refl
+  amgu-sound {m = m} {acc = acc} eq (s · s₁) (t · t₁) refl | suc (n' , al') | iC prf' with † acc with inspect † acc
+    where open Monad (type-is-monad)
+          † = amgu eq s t
+  ... | suc (n'' , al'') | iC prf'' rewrite amgu-sound eq s₁ t₁ prf'
+    = cong
+      (λ x → x · (t₁ >>= (sub al')))
+      (alist-invariant {s = s} {t = t} {al = al''}
+        (amgu-extend {s = s₁} {t = t₁} {eq = eq} prf')
+        (amgu-sound eq s t prf''))
+    where open Monad (type-is-monad)
+  amgu-sound {m = m} {acc = acc} eq (s · s₁) (Var (unification x)) refl | suc (n' , al') | iC prf' = {!!}
+  amgu-sound {m = m} {acc = acc} eq (Var x) t prf | suc (n' , al') | iC prf' = {!!}
 
 
   mgu : ∀{tc}{m}(eq : Eq tc)(s t : Type (SVar tc m)) → Ⓢ (∃ (AList tc m))
@@ -402,8 +529,9 @@ module OutsideIn.Instantiations.Simple where
                               {θ : x ⨁ n → Type (x ⨁ m)}
                               {θ' : x ⨁ m → Type (x ⨁ m')}
                               {s} {Qs : SConstraintShape (x ⨁ n) s} →
-                            (applySubst θ' ∘ applySubst θ) Qs ≡
-                            applySubst (Monad._>=>_ type-is-monad θ' θ) Qs
+                              let open Monad (type-is-monad) in
+                                (applySubst θ' ∘ applySubst θ) Qs ≡
+                                applySubst (θ' >=> θ) Qs
   applySubst-composition {θ = θ} {θ' = θ'} {Qs = x ∼ x'}
     rewrite assoc {a = θ'} {b = θ} {τ = x}
     rewrite assoc {a = θ'} {b = θ} {τ = x'} = refl

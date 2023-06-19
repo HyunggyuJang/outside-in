@@ -166,7 +166,17 @@ module OutsideIn.Prelude where
                 * : x >>= (λ x → x >>= (λ y → unit (f y))) ≡ join ((_<$>_ f) <$> x)
                 * = cong (_>>=_ x) 
                          (extensionality (λ y → trans (sym <$>-bind) 
-                                                      (is-left-ident {x = _<$>_ f}{v = y}))) 
+                                                      (is-left-ident {x = _<$>_ f}{v = y})))
+        >>=->=>commute : ∀ {a b c}{f : a → X b}{g : b → X c}{s : X a} → s >>= (g >=> f) ≡ (s >>= f) >>= g
+        >>=->=>commute {f = f}{g = g}{s = s} = begin
+          s >>= (g >=> f)
+            ≡⟨ refl ⟩ (λ _ → s) 0 >>= (g >=> f)
+            ≡⟨ refl ⟩ ((g >=> f) >=> (λ _ → s)) 0
+            ≡⟨ sym (>=>-assoc { c = λ _ → s }{0}) ⟩ (g >=> (f >=> (λ _ → s))) 0
+            ≡⟨ refl ⟩ (f >=> (λ _ → s)) 0 >>= g
+            ≡⟨ refl ⟩ ((λ _ → s) 0 >>= f) >>= g
+            ≡⟨ refl ⟩ (s >>= f) >>= g ∎
+          where open ≡-Reasoning
 
     id-is-monad : Monad id
     id-is-monad = record { is-functor = id-is-functor 
