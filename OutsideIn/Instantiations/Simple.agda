@@ -112,7 +112,6 @@ module OutsideIn.Instantiations.Simple where
                       unit (a′ · b′)
    where open Monad (Ⓢ-is-monad)
 
-
   data AList (tc : Set) : ℕ → ℕ → Set where
     anil : ∀ {n} → AList tc n n
     _asnoc_/_ : ∀ {m n} → AList tc m n → Type (SVar tc m) → Fin (suc m) → AList tc (suc m) n
@@ -127,7 +126,19 @@ module OutsideIn.Instantiations.Simple where
   (t′ for x) (base y) = Var (base y)
   (t′ for x) (unification y) with thick x y
   ... | suc y′ = Var (unification y′)
-  ... | zero   = t′ 
+  ... | zero   = t′
+
+  check-implies-for-invariant : ∀ {tc}{n}{t : Type (SVar tc n)}{x : Fin (suc n)}{s : Type (SVar tc (suc n))}{s' : Type (SVar tc n)}
+    → check x s ≡ suc s'
+    → let open Monad (type-is-monad) in
+       s >>= (t for x) ≡ s'
+  check-implies-for-invariant {s = funTy} refl = refl
+  check-implies-for-invariant {x = x} {s = s · s₁} prf with check x s with inspect (check x) s with check x s₁ with inspect (check x) s₁
+  check-implies-for-invariant {t = t} {x = x} {s · s₁} refl | suc s' | iC prf' | suc s₁' | iC prf₁'
+    = cong₂ _·_ (check-implies-for-invariant {t = t} {x = x} {s = s} prf') (check-implies-for-invariant {t = t} {x = x} {s = s₁} prf₁')
+  check-implies-for-invariant {s = Var (base x)} refl = refl
+  check-implies-for-invariant {x = x} {s = Var (unification x')} prf with thick x x'
+  check-implies-for-invariant {x = x} {Var (unification x')} refl | suc x'' = refl
 
   sub : ∀ {m n}{tc} → AList tc m n → SVar tc m → Type (SVar tc n)  
   sub anil = Var
@@ -310,7 +321,25 @@ module OutsideIn.Instantiations.Simple where
         (amgu-extend {s = s₁} {t = t₁} {eq = eq} prf')
         (amgu-sound eq s t prf''))
     where open Monad (type-is-monad)
-  amgu-sound {m = m} {acc = acc} eq (s · s₁) (Var (unification x)) refl | suc (n' , al') | iC prf' = {!!}
+  amgu-sound {m = .(suc m')} {acc = suc m' , anil} eq (s · s₁) (Var (unification x)) refl | suc (n' , al') | iC prf' with check x (s · s₁) with inspect (check x) (s · s₁)
+  amgu-sound {_} {.(suc m')} {.m'} {.(anil asnoc rlt / x)} {suc m' , anil} eq (s · s₁) (Var (unification x)) refl | suc (.m' , .(anil asnoc rlt / x)) | iC refl | suc rlt | iC prf''
+    rewrite thick-ident x = begin
+      (s >>= (Var >=> (rlt for x))) · (s₁ >>= (Var >=> (rlt for x)))
+      ≡⟨ cong₂ _·_ (>>=->=>commute {s = s}) (>>=->=>commute {s = s₁}) ⟩
+        ((s >>= (rlt for x)) >>= Var) · ((s₁ >>= (rlt for x)) >>= Var)
+      ≡⟨ cong₂ _·_ left-id left-id ⟩
+        (s >>= (rlt for x)) · (s₁ >>= (rlt for x))
+      ≡⟨ check-implies-for-invariant {t = rlt} {x = x} {s = s · s₁} prf'' ⟩ rlt
+      ≡⟨ sym left-id ⟩ rlt >>= Var
+    ∎
+    where open ≡-Reasoning
+          open Monad (type-is-monad)
+  amgu-sound {m = .(suc _)} {acc = m' , (snd asnoc x₁ / x₂)} eq (s · s₁) (Var (unification x)) refl | suc (n' , al') | iC prf' with † (m' , snd) with inspect † (m' , snd)
+    where open Monad (type-is-monad)
+          † = amgu eq ((s · s₁) >>= (x₁ for x₂)) (Var (unification x) >>= (x₁ for x₂))
+  amgu-sound {_} {.(suc _)} {.n''} {.(al'' asnoc x₁ / x₂)} {m' , (σ asnoc x₁ / x₂)} eq (s · s₁) (Var (unification x)) refl | suc (.n'' , .(al'' asnoc x₁ / x₂)) | iC refl | suc (n'' , al'') | iC prf''
+    = {!!}
+    where open Monad (type-is-monad)
   amgu-sound {m = m} {acc = acc} eq (Var x) t prf | suc (n' , al') | iC prf' = {!!}
 
 
