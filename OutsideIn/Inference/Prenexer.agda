@@ -30,5 +30,5 @@ module OutsideIn.Inference.Prenexer(x : X) where
   ... | na , a′ , p₁ | nb , b′ , p₂ = _ , _ , PN-∧ p₁ p₂
   prenex {n} (Imp′ q c) with prenex c
   ... | m , c′ , p = _ , _ , PN-Imp p 
-  prenex (Ⅎ_ x) with prenex x
-  ... | n , x′ , p = _ , _ , PN-Ext  p
+  prenex (Ⅎ x) with prenex x
+  ... | n , x′ , p = _ , _ , PN-Ext p

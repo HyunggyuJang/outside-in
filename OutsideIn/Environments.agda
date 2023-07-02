@@ -15,8 +15,9 @@ module OutsideIn.Environments(x : X) where
   Environment : Set → Set → Set
   Environment ev tv = ∀ {x} → Name ev x → TypeSchema tv x 
 
-  ⟨_⟩,_ : ∀{ev}{tv} → TypeSchema tv Regular → (∀{x} → Name ev x → TypeSchema tv x) 
-        → ∀{x} → Name (Ⓢ ev) x → TypeSchema tv x
+  ⟨_⟩,_ : ∀{ev}{tv} → TypeSchema tv Regular
+        → Environment ev tv
+        → Environment (Ⓢ ev) tv
   (⟨ τ ⟩, Γ) (N zero) = τ
   (⟨ τ ⟩, Γ) (N (suc n)) = Γ (N n)
   (⟨ τ ⟩, Γ) (DC n) = Γ (DC n)
@@ -25,6 +26,6 @@ module OutsideIn.Environments(x : X) where
   Γ ↑Γ = TS-f.map suc ∘ Γ
 
 
-  addAll : ∀{n}{ev}{tv} → Vec (Type tv) n → ( Environment ev tv) → Environment (ev ⨁ n) tv
+  addAll : ∀{n}{ev}{tv} → Vec (Type tv) n → Environment ev tv → Environment (ev ⨁ n) tv
   addAll [] Γ = Γ 
-  addAll (τ ∷ τs) Γ = addAll τs (⟨ ∀′ 0 · ε ⇒ τ ⟩, Γ ) 
+  addAll (τ ∷ τs) Γ = addAll τs (⟨ ∀′ 0 · ε ⇒ τ ⟩, Γ )

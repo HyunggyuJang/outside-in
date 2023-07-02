@@ -9,7 +9,7 @@ module OutsideIn.TypeSchema(x : X) where
     Regular : NameType
     Datacon : ℕ → NameType
 
-  data TypeSchema ( n : Set) : NameType → Set where
+  data TypeSchema (n : Set) : NameType → Set where
     ∀′_·_⇒_ : (v : ℕ) → QConstraint (n ⨁ v) → Type (n ⨁ v) → TypeSchema n Regular
     DC∀′_,_·_⇒_⟶_ : (a b : ℕ){l : ℕ} → QConstraint ((n ⨁ a) ⨁ b) 
                    → Vec (Type ((n ⨁ a) ⨁ b)) l → n → TypeSchema n (Datacon l)

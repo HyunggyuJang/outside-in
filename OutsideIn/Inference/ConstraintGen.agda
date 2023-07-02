@@ -25,7 +25,6 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
 
 
   private 
-
     upindex : {X : Set → Set}{tv : Set} → ⦃ is-functor : Functor X ⦄ → X tv → X (Ⓢ tv)
     upindex ⦃ is-functor ⦄ e = suc <$> e
       where open Functor (is-functor)
@@ -73,12 +72,12 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
     syntax alternativeConstraintGen Γ α₀ α₁ alt C = Γ ►′ alt ∶ α₀ ⟶ α₁ ↝ C
     data alternativeConstraintGen {ev : Set}{tv : Set}(Γ : Environment ev tv)(α₀ α₁ : Type tv) : 
                                    {r : Shape} → Alternative ev tv r → Constraint tv Extended → Set where
-      Simple : ∀ {r}{n}{v : Name ev (Datacon n)}{e : Expression _ _ r}{a}{τs}{T}{C}             
+      Simple : ∀ {r}{n}{v : Name ev (Datacon n)}{e : Expression _ _ r}{a}{τs}{T}{C}
              → let δ = TVar zero
             in Γ v ≡ DC∀ a · τs ⟶ T
              → addAll (Vec-f.map (_↑t) τs) (upGamma {a} Γ ↑Γ) ► (upExp {a} e ↑e) ∶ δ ↝ C 
              → Γ ►′ v →′ e ∶ α₀ ⟶ α₁ ↝ Ⅎ′ a · (Ⅎ δ ∼′ (upType {a} α₁ ↑t) ∧′ C) ∧′ applyAll a (TVar T) ∼′ upType {a} α₀
-      GADT : ∀ {r}{n}{v : Name ev (Datacon n)}{e : Expression _ _ r}{a}{b}{Q}{τs}{T}{C}             
+      GADT : ∀ {r}{n}{v : Name ev (Datacon n)}{e : Expression _ _ r}{a}{b}{Q}{τs}{T}{C}
            → let δ = TVar zero
           in Γ v ≡ DC∀′ a , b · Q ⇒ τs ⟶ T
            →   addAll (Vec-f.map (_↑t) τs) (upGamma {b} (upGamma {a} Γ) ↑Γ) 
@@ -86,6 +85,7 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
            → Γ ►′ v →′ e ∶ α₀ ⟶ α₁ ↝ Ⅎ′ a · Ⅎ′ b · (Imp′ Q (Ⅎ (C ∧′ δ ∼′ (upType {b} (upType {a} α₁) ↑t))))
                                                   ∧′ upType {b} (upType {a} α₀) ∼′ Type-f.map (PlusN-m.unit b) (applyAll a (TVar T))
       
+    infix 5 alternativesConstraintGen
     syntax alternativesConstraintGen Γ α₀ α₁ alts C = Γ ►► alts ∶ α₀ ⟶ α₁ ↝ C
     data alternativesConstraintGen {ev : Set}{tv : Set}(Γ : Environment ev tv)(α₀ α₁ : Type tv) : 
                                    {r : Shape} → Alternatives ev tv r → Constraint tv Extended → Set where
@@ -93,7 +93,7 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
       AnAlternative : ∀ {r₁ r₂}{a : Alternative _ _ r₁}{as : Alternatives _ _ r₂}{C₁}{C₂} 
                     → Γ ►′ a      ∶ α₀ ⟶ α₁ ↝ C₁
                     → Γ ►► as     ∶ α₀ ⟶ α₁ ↝ C₂ 
-                    → Γ ►► a ∣ as ∶ α₀ ⟶ α₁ ↝ C₂  
+                    → Γ ►► a ∣ as ∶ α₀ ⟶ α₁ ↝ C₁ ∧′ C₂
 
     infix 5 constraintGen
     syntax constraintGen a c b d = a ► b ∶ c ↝ d
@@ -138,7 +138,7 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
            → let α₀ = upType {n} (TVar zero)
                  α₁ = upType {n} (TVar (suc zero))
                  up2 = PlusN-f.map n (PlusN-m.unit 2)
-              in                     upGamma {n} (upGamma {2} Γ) ► Exp-f₂.map up2 x ∶ α₀ ↝ C              
+              in                     upGamma {n} (upGamma {2} Γ) ► Exp-f₂.map up2 x ∶ α₀ ↝ C
                → upGamma {n} (upGamma {2} (⟨ ∀′ n · Q ⇒ t ⟩, Γ)) ► upExp {n} (upExp {2} y) ∶ α₁ ↝ C₂
                → Γ ► let₃ n · x ∷ Q ⇒ t in′ y ∶ τ ↝ Ⅎ Ⅎ Ⅎ′ n · Imp′ (QC-f.map up2 Q)  (C ∧′ α₀ ∼′ Type-f.map up2 t)
                                                             ∧′ C₂ ∧′ upType {n} (upType {2} τ) ∼′ α₁
